@@ -2,6 +2,7 @@ name: web
 mode: web
 start_loc: https://vespa.ai/
 deploy_mode: cloud  # "local" for Docker or "cloud" for Vespa Cloud
+vespa_app_path: ./vespa_cloud
 cloud_tenant: your-tenant  # required for cloud mode (env/CLI still override)
 exclude:
   - https://vespa.ai/pricing
