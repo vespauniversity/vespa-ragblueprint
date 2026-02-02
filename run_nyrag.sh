@@ -37,11 +37,21 @@ fi
 
 echo "✅ Vespa Cloud deployment is accessible"
 
-# Get Vespa Cloud endpoint URL
-VESPA_ENDPOINT=$(vespa status --format plain 2>/dev/null | grep -oP 'https://[^\s]+' | head -1 || echo "")
-
-# Use token endpoint for Vespa Cloud (not the mTLS endpoint)
-TOKEN_ENDPOINT="https://ebaf55f7.ccbe61cf.z.vespa-app.cloud"
+# Get Vespa Cloud endpoint URL - prefer environment variable, fallback to vespa status
+if [ -n "$VESPA_CLOUD_ENDPOINT" ]; then
+    TOKEN_ENDPOINT="$VESPA_CLOUD_ENDPOINT"
+    echo "Using endpoint from VESPA_CLOUD_ENDPOINT environment variable"
+else
+    # Extract the token endpoint (not mTLS) from vespa status
+    TOKEN_ENDPOINT=$(vespa status 2>/dev/null | grep "(token)" | grep -oP 'https://[^\s]+' || echo "")
+    if [ -n "$TOKEN_ENDPOINT" ]; then
+        echo "✅ Using token endpoint from vespa status: $TOKEN_ENDPOINT"
+    else
+        echo "❌ Could not determine Vespa Cloud token endpoint"
+        echo "Please set: export VESPA_CLOUD_ENDPOINT='https://your-app.vespa-app.cloud'"
+        exit 1
+    fi
+fi
 
 # Extract token from doc_example.yml if not already set
 if [ -z "$VESPA_CLOUD_SECRET_TOKEN" ]; then
@@ -95,13 +105,6 @@ echo ""
 # Verify deployment is ready
 echo "Verifying Vespa Cloud deployment..."
 echo "✅ Vespa Cloud deployment is ready"
-
-# echo ""
-# echo "Starting NyRAG UI server..."
-# echo "  URL: http://localhost:8000"
-# echo ""
-# echo "Press Ctrl+C to stop"
-# echo ""
 
 # Run the UI (token-based auth, no browser login needed)
 # The VESPA_CLOUD_SECRET_TOKEN environment variable handles authentication
