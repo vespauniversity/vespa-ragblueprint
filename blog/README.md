@@ -1,4 +1,4 @@
-# Build a RAG App with Vespa Cloud in 15 Minutes
+# Build a High-Quality RAG App on Vespa Cloud in 15 Minutes
 
 *From Zero to RAG: A Simple Step-by-Step Tutorial*
 
