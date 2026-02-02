@@ -268,7 +268,7 @@ llm_config:
 **Quick way (using the provided script):**
 ```bash
 # This script handles all configuration automatically
-./run_nyrag_cloud.sh
+./run_nyrag.sh
 ```
 
 The `run_nyrag_cloud.sh` script will:
