@@ -1,0 +1,90 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nyrag"
+version = "0.0.9"
+description = "nyrag"
+readme = "README.md"
+requires-python = ">=3.10,<3.14"
+authors = [
+    { name = "abhishek" }
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence"
+]
+keywords = ["nyrag"]
+dependencies = [
+    "rich>=13.0.0",
+    "fastapi==0.128.0",
+    "uvicorn==0.40.0",
+    "pyyaml>=6.0.3",
+    "markitdown[all]>=0.1.4",
+    "scrapy>=2.13.4",
+    "beautifulsoup4>=4.14.3",
+    "pyvespa>=0.62.0",
+    "brotli>=1.2.0",
+    "sentence-transformers>=5.2.0",
+    "httpx>=0.28.1",
+    "jinja2>=3.1.6",
+    "openai>=2.14.0",
+    "vespacli>=8.620.35",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black==25.12.0",
+    "isort==7.0.0",
+    "flake8==7.3.0",
+    "pytest>=9.0.2",
+]
+
+[project.scripts]
+nyrag = "nyrag.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/abhishekkrthakur/nyrag"
+Issues = "https://github.com/abhishekkrthakur/nyrag/issues"
+
+[tool.setuptools.package-data]
+nyrag = ["static/*", "templates/*", "examples/*"]
+
+[tool.black]
+line-length = 119
+target-version = ["py310"]
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | venv
+  | \.env
+  | env
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+ensure_newline_before_comments = true
+force_grid_wrap = 0
+include_trailing_comma = true
+line_length = 119
+lines_after_imports = 2
+multi_line_output = 3
+use_parentheses = true
+
+[tool.flake8]
+ignore = ["E203", "E501", "W503"]
+max-line-length = 119
+per-file-ignores = { "__init__.py" = ["F401", "E402"] }
+exclude = [".git", ".venv", "__pycache__", "dist", "build"]
+
+[tool.pytest.ini_options]
+addopts = "--maxfail=1 --disable-warnings"
+testpaths = ["tests"]

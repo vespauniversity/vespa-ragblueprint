@@ -1,0 +1,41 @@
+name: doc
+mode: docs
+deploy_mode: cloud
+start_loc: /media/albert/sda/Code/rag/vespa-ragblueprint/dataset
+# Use existing Vespa app instead of generating new one
+vespa_app_path: /media/albert/sda/Code/rag/vespa-ragblueprint/vespa_cloud
+# Vespa Cloud configuration
+vespa_cloud:
+  endpoint: https://ebaf55f7.ccbe61cf.z.vespa-app.cloud
+  # token: YOUR_TOKEN_HERE  # Or set VESPA_CLOUD_SECRET_TOKEN env var
+  token: vespa_cloud_TCekosKIMJeXhdJ1rhwn1HE1M7dRvxKDgAdJsDzTFg3
+exclude:
+  - "*.html"
+
+# Optional: Web crawling specific parameters
+doc_params:
+  recursive: true               # Process subdirectories recursively (default: true)
+  include_hidden: false         # Include hidden files (default: false)
+  follow_symlinks: false        # Follow symbolic links (default: false)
+  max_file_size_mb: 100         # Maximum file size in MB (optional)
+  file_extensions:              # Only process these file types (optional)
+    - .pdf
+    - .docx
+    - .txt
+    - .md
+
+# Optional: General parameters for downstream RAG processing
+rag_params:
+  embedding_model: sentence-transformers/all-mpnet-base-v2
+  embedding_dim: 768              # Embedding dimension (default: 384)
+  chunk_size: 512                 # Chunk size for text splitting (default: 1024)
+  chunk_overlap: 50
+  distance_metric: angular        # Distance metric: angular, euclidean, etc. (default: angular)
+  device: cpu                     # Device for embeddings: 'cpu' or 'cuda' (default: cpu)
+  max_tokens: 8192
+
+llm_config:
+  base_url: https://openrouter.ai/api/v1
+  model: openai/gpt-4o-mini
+  api_key: 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
+

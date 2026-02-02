@@ -1,0 +1,35 @@
+name: docrag
+mode: docs
+start_loc: /docs/
+deploy_mode: local  # "local" for Docker or "cloud" for Vespa Cloud
+cloud_tenant: your-tenant  # required for cloud mode (env/CLI still override)
+exclude:
+  - "*.html"
+
+# Optional: Document processing specific parameters
+doc_params:
+  recursive: true               # Process subdirectories recursively (default: true)
+  include_hidden: false         # Include hidden files (default: false)
+  follow_symlinks: false        # Follow symbolic links (default: false)
+  max_file_size_mb: 100         # Maximum file size in MB (optional)
+  file_extensions:              # Only process these file types (optional)
+    - .pdf
+    - .docx
+    - .txt
+    - .md
+
+# Optional: General parameters for downstream RAG processing
+# Note: Embeddings are computed by Vespa's HuggingFace embedder (nomic-ai-modernbert-embed-base)
+# Distance metric is fixed to hamming (binary vectors with pack_bits)
+rag_params:
+  embedding_model: nomic-ai/modernbert-embed-base  # Model used by Vespa embedder
+  embedding_dim: 96               # Packed int8 dimension (768 floats -> 96 int8)
+  chunk_size: 512                 # Chunk size for text splitting (default: 1024)
+  chunk_overlap: 0                # Vespa's built-in chunking doesn't use overlap
+  max_tokens: 8192
+
+# Optional: LLM configuration (works with any OpenAI-compatible API)
+llm_config:
+  base_url: https://openrouter.ai/api/v1
+  model: anthropic/claude-3.5-sonnet
+  api_key: your-openrouter-key

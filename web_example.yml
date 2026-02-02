@@ -1,0 +1,71 @@
+name: webrag
+mode: web
+start_loc: https://vespa.ai/
+# Use existing Vespa app instead of generating new one
+vespa_app_path: /media/albert/sda/Code/rag/vespa-blog-posts/ragblueprint/vespa_app
+feed_to_vespa: false  # Set to false to skip feeding, only crawl and save to JSONL
+cloud_tenant: tenants
+cloud_app: rag-blueprint
+cloud_instance: default
+exclude:
+  - https://vespa.ai/pricing
+  - https://vespa.ai/sales
+  - https://status.vespa.ai/*
+
+# Optional: Web crawling specific parameters
+crawl_params:
+  respect_robots_txt: true     # Respect robots.txt rules (default: true)
+  aggressive_crawl: false       # Enable aggressive crawling (higher speed, more requests) (default: false)
+  follow_subdomains: true       # Follow subdomains of the start URL (default: true)
+  strict_mode: false            # Only crawl URLs matching the start URL pattern (default: false)
+  user_agent_type: chrome       # User agent type: chrome, firefox, safari, mobile, bot (default: chrome)
+  # custom_user_agent: "..."    # Custom user agent string (optional, overrides user_agent_type)
+  allowed_domains:            # Explicitly allowed domains (optional, auto-detected from start_loc)
+    - vespa.ai
+    - docs.vespa.ai
+
+# Optional: General parameters for downstream RAG processing
+rag_params:
+  embedding_model: sentence-transformers/all-MiniLM-L6-v2
+  embedding_dim: 384              # Embedding dimension (default: 384)
+  chunk_size: 1024                # Chunk size for text splitting (default: 1024)
+  chunk_overlap: 50
+  distance_metric: angular        # Distance metric: angular, euclidean, etc. (default: angular)
+  device: cpu                     # Device for embeddings: 'cpu' or 'cuda' (default: cpu)
+  max_tokens: 8192
+
+llm_config:
+  llm_base_url: https://openrouter.ai/api/v1
+  llm_model: openai/gpt-4o-mini
+  llm_api_key: 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
+
+# ---
+# Alternative: for documents input
+# ---
+# name: example-docs
+# mode: docs
+# start_loc: /path/to/documents/
+# exclude:
+#   - /path/to/documents/exclude_this.docx
+#   - "*.csv"
+#   - "*.tmp"
+#
+# # Optional: Document processing specific parameters
+# doc_params:
+#   recursive: true               # Process subdirectories recursively (default: true)
+#   include_hidden: false         # Include hidden files (default: false)
+#   follow_symlinks: false        # Follow symbolic links (default: false)
+#   max_file_size_mb: 100         # Maximum file size in MB (optional)
+#   file_extensions:              # Only process these file types (optional)
+#     - .pdf
+#     - .docx
+#     - .txt
+#     - .md
+#
+# rag_params:
+#   embedding_model: sentence-transformers/all-MiniLM-L6-v2
+#   chunk_size: 500
+#   chunk_overlap: 50
+#   device: cpu                    # Device for embeddings: 'cpu' or 'cuda' (default: cpu)
+#   max_tokens: 8192
+
