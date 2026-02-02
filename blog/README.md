@@ -277,6 +277,8 @@ The `run_nyrag_cloud.sh` script will:
 - Set up all environment variables
 - Start the NyRAG UI on port 8000
 
+![nyrag_7](img/nyrag_7.png)
+
 **Or manually:**
 ```bash
 # Set your token as environment variable
