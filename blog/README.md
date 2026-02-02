@@ -120,7 +120,7 @@ cd vespa-ragblueprint
 uv sync
 source .venv/bin/activate
 
-# Or using pip
+# Install localy
 uv pip install -e .
 ```
 
