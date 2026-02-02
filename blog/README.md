@@ -279,6 +279,7 @@ The `run_nyrag.sh` script will:
 
 ![nyrag_7](img/nyrag_7.png)
 
+<!--
 **Or manually:**
 ```bash
 # Set your token as environment variable
@@ -287,6 +288,7 @@ export VESPA_CLOUD_SECRET_TOKEN='your-vespa-cloud-token'
 # Start the web interface
 nyrag ui --cloud
 ```
+-->
 
 Open http://localhost:8000 in your browser.
 
@@ -294,6 +296,7 @@ Open http://localhost:8000 in your browser.
 
 In the NyRAG UI, you can:
 - Upload or select your configuration (e.g., `doc_example.yml`)
+- Feed data to this project
 - Monitor processing progress
 - See how many documents are processed
 
@@ -303,13 +306,17 @@ NyRAG will automatically:
 3. Generate embeddings for each chunk
 4. Feed everything to your Vespa Cloud deployment
 
+![nyrag_8](img/nyrag_8.png)  
+
+![nyrag_9](img/nyrag_9.png)  
+
 ---
 
 ## Step 4: Chat with Your Data
 
 Once processing is complete, use the NyRAG chat interface to ask questions!
 
-![NyRAG UI](img/nyrag_ui.png)
+![nyrag_11](img/nyrag_11.png)
 
 **How it works:**
 1. You type a question

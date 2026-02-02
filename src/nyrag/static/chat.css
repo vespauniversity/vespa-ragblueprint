@@ -926,13 +926,15 @@ details>div {
 
 /* Interactive YAML GUI */
 .interactive-yaml-container {
-  background-color: var(--bg-color);
+  background-color: #f8f9fa;
   color: var(--text-primary);
   font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
   font-size: 13px;
-  padding: 16px;
+  padding: 20px;
   overflow-y: auto;
-  line-height: 1.6;
+  line-height: 1.8;
+  border: 1px solid #e1e4e8;
+  border-radius: 6px;
 }
 
 .yaml-line {
@@ -940,8 +942,9 @@ details>div {
   align-items: center;
   /* Align items vertically */
   white-space: pre;
-  min-height: 24px;
+  min-height: 28px;
   /* Ensure line has height even if empty */
+  padding: 2px 0;
 }
 
 .yaml-indent {
@@ -950,8 +953,9 @@ details>div {
 }
 
 .yaml-key {
-  color: #8be9fd;
-  /* Cyan */
+  color: #005cc5;
+  /* Professional blue */
+  font-weight: 500;
   margin-right: 8px;
   flex-shrink: 0;
 }
@@ -962,11 +966,11 @@ details>div {
   background: transparent;
   border: none;
   /* No border */
-  color: #f1fa8c;
-  /* Yellow (String) */
+  color: #24292e;
+  /* Dark gray for values */
   font-family: inherit;
   font-size: inherit;
-  padding: 0;
+  padding: 2px 6px;
   margin: 0;
   outline: none;
   flex: 1;
@@ -974,23 +978,28 @@ details>div {
   min-width: 0;
   /* Allow shrinking if needed */
   text-overflow: ellipsis;
+  border-radius: 3px;
+  transition: background-color 0.15s ease;
 }
 
 .yaml-input:focus,
 .yaml-select:focus,
 .yaml-textarea:focus {
-  /* No border on focus either, maybe just a slight background to indicate active */
-  background: rgba(255, 255, 255, 0.05);
+  /* Subtle highlight on focus */
+  background: #ffffff;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
 .yaml-input::placeholder {
-  color: #6272a4;
+  color: #959da5;
   font-style: italic;
+  opacity: 1;
 }
 
 .yaml-select {
-  color: #bd93f9;
-  /* Purple (Boolean/Enum) */
+  color: #6f42c1;
+  /* Muted purple for enums */
+  font-weight: 500;
   cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
@@ -999,14 +1008,16 @@ details>div {
   background-image: none;
 }
 
-/* For boolean specifically maybe another color */
+/* For boolean specifically */
 .yaml-select.bool-true {
-  color: #50fa7b;
+  color: #22863a;
+  /* GitHub green */
 }
 
 /* Green */
 .yaml-select.bool-false {
-  color: #ff5555;
+  color: #d73a49;
+  /* GitHub red */
 }
 
 /* Red */
@@ -1015,9 +1026,16 @@ details>div {
   display: block;
   width: 100%;
   resize: none;
-  color: #f1fa8c;
+  color: #24292e;
   overflow: hidden;
   height: auto;
+}
+
+.yaml-value-readonly {
+  color: #6a737d;
+  font-style: italic;
+  padding: 2px 6px;
+  margin-left: 4px;
 }
 
 .yaml-array-item {
