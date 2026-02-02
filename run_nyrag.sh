@@ -68,6 +68,7 @@ fi
 
 # Set environment variables for Vespa Cloud
 export NYRAG_LOCAL=0
+export NYRAG_CLOUD_MODE=1
 export NYRAG_VESPA_DEPLOY=0
 export VESPA_URL=${TOKEN_ENDPOINT}
 export VESPA_PORT=443
