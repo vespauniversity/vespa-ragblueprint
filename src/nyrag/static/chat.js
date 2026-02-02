@@ -495,14 +495,15 @@ async function loadExamples() {
       exampleSelect.appendChild(opt);
     });
 
-    // Auto-select "web" template if available and no config loaded yet
+    // Auto-select "web" template only if no project is active and config is fallback
     const isFallback =
       !currentConfig ||
       !currentConfig.name ||
       (currentConfig.name === "new-project" &&
         currentConfig.start_loc === "https://example.com");
 
-    if (exampleConfigs["web"] && isFallback) {
+    // Don't auto-select template if we have an active project (user wants to keep their config)
+    if (exampleConfigs["web"] && isFallback && !activeProjectName) {
       exampleSelect.value = "web";
       // Trigger the onchange event
       exampleSelect.dispatchEvent(new Event("change"));
