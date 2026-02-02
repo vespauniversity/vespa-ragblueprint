@@ -14,6 +14,7 @@ const loadingSpinner = document.getElementById("loading-spinner");
 // Header action buttons
 const configUpload = document.getElementById("config-upload");
 const createNewBtn = document.getElementById("create-new-btn");
+const editProjectBtn = document.getElementById("edit-project-btn");
 const projectSelector = document.getElementById("project-selector");
 const projectSelectorContainer = document.getElementById("project-selector-container");
 
@@ -70,7 +71,7 @@ let deployModeSource = null; // "deploy-mode" or "stats"
 let activeProjectName = null; // Currently selected project
 const serverDeployMode = document.body?.dataset?.deployMode;
 
-// Update Input State
+// Update Input State and Button Visibility
 function updateChatInputState() {
   const isChatMode = currentMode === "chat";
   const canChat = activeProjectName && hasData;
@@ -90,6 +91,17 @@ function updateChatInputState() {
     sendBtn.disabled = isDisabled;
     sendBtn.style.opacity = isDisabled ? "0.5" : "1";
     sendBtn.style.cursor = isDisabled ? "not-allowed" : "pointer";
+  }
+
+  // Show/hide edit and create buttons based on active project
+  if (editProjectBtn && createNewBtn) {
+    if (activeProjectName) {
+      editProjectBtn.style.display = "block";
+      createNewBtn.style.display = "none";
+    } else {
+      editProjectBtn.style.display = "none";
+      createNewBtn.style.display = "block";
+    }
   }
 }
 
@@ -1076,6 +1088,19 @@ if (createNewBtn) {
     currentConfig = JSON.parse(JSON.stringify(FALLBACK_CONFIG));
     await loadSchema(currentConfig.mode || "web");
     renderConfigEditor();
+  };
+}
+
+// Edit Project button handler
+if (editProjectBtn) {
+  editProjectBtn.onclick = async () => {
+    if (!activeProjectName) return;
+
+    // Switch to feed mode which will load the project config
+    setMode("feed");
+
+    // The setMode("feed") already handles loading the project config
+    // when activeProjectName is set (see lines 139-144)
   };
 }
 
