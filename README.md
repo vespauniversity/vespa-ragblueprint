@@ -10,7 +10,7 @@ This repository contains a complete, working example of a RAG application that c
 
 - **Vespa RAG Blueprint**: Pre-configured Vespa application with hybrid search (BM25 + vector search)
 - **Modified NyRAG**: Document processing tool that handles chunking, embeddings, and chat UI
-- **Ready-to-use scripts**: Quick start scripts for local and cloud deployments
+- **Ready-to-use scripts**: Quick start scripts for cloud deployments
 
 **What you can do:**
 - Process PDFs, DOCX, websites, and other documents
@@ -84,7 +84,7 @@ llm_config:
 
 **Quick start (recommended):**
 ```bash
-./run_nyrag_cloud.sh
+./run_nyrag.sh
 ```
 
 This script automatically:
@@ -106,41 +106,19 @@ nyrag ui --cloud
 3. Monitor processing progress
 4. Start chatting with your data!
 
-## Quick Start (Local)
-
-To run everything locally using Docker:
-
-```bash
-# Start local Vespa (requires Docker with 8-12GB RAM)
-docker run --detach --name vespa \
-  --publish 127.0.0.1:8080:8080 \
-  --publish 127.0.0.1:19071:19071 \
-  vespaengine/vespa
-
-# Deploy the local app
-vespa config set target local
-vespa deploy --wait 300 ./vespa_local
-
-# Run NyRAG locally
-./run_nyrag_local.sh
-```
-
 ## How to Get Free LLM API Keys
 
 ### Option 1: OpenRouter (Recommended)
 - Sign up at [openrouter.ai](https://openrouter.ai/)
-- Free $1 credit (hundreds of queries)
 - 100+ models available
 - Use model: `meta-llama/llama-3.2-3b-instruct:free`
 
 ### Option 2: OpenAI
 - Sign up at [platform.openai.com](https://platform.openai.com/)
-- $5 free credits for new accounts
 - Use model: `gpt-4o-mini`
 
 ### Option 3: Groq
 - Sign up at [console.groq.com](https://console.groq.com/)
-- Free tier with fast inference
 - Use model: `llama-3.3-70b-versatile`
 
 ### Option 4: Ollama (100% Free - Local)
@@ -164,16 +142,18 @@ vespa deploy --wait 300 ./vespa_local
 ```
 vespa-ragblueprint/
 ├── vespa_cloud/          # Vespa Cloud application package
-│   ├── schemas/          # Document schema (doc.sd)
 │   ├── services.xml      # Vespa services configuration
+│   ├── schemas/          # Document schema (doc.sd) and rank profiles
+│   ├── models/           # Models files
 │   └── search/           # Query profiles
-├── vespa_local/          # Local Vespa application package
-├── src/nyrag/            # Modified NyRAG source code
+├── config/               # Vespa Cloud application package
+│   ├── doc_example.yml   # Example configuration file
+│   └── web_example.yml   # Example config for website crawling
+├── src/nyrag/            # NyRAG source code
 ├── dataset/              # Example documents (PDFs, DOCX)
-├── doc_example.yml       # Example configuration file
-├── web_example.yml       # Example config for website crawling
-├── run_nyrag_cloud.sh    # Quick start script for cloud
-├── run_nyrag_local.sh    # Quick start script for local
+├── run_nyrag.sh          # Quick start NyRAG
+├── stop_nyrag.sh         # Stop NyRAG
+├── process_docs.sh       # Process document files
 └── README.md             # This file
 ```
 
@@ -294,6 +274,9 @@ for hit in response.hits:
 ### Via Vespa CLI
 
 ```bash
+# Go to vespa cloud application directory
+cd vespa_cloud
+
 vespa config set target cloud
 vespa config set application your-tenant.your-app
 vespa auth login
@@ -344,20 +327,13 @@ schema doc {
 
 ## Scripts
 
-### `run_nyrag_cloud.sh`
+### `run_nyrag.sh`
 
 Quick start for Vespa Cloud:
 - Checks Vespa Cloud connection
 - Loads token from `doc_example.yml`
 - Starts NyRAG UI
-
-### `run_nyrag_local.sh`
-
-Quick start for local development:
-- Connects to local Vespa (Docker)
-- Starts NyRAG UI on localhost
-
-### `process_docs_cloud.sh`
+### `process_docs.sh`
 
 Batch process documents without UI:
 - Reads config from `doc_example.yml`
@@ -396,7 +372,7 @@ Make sure you're using the modified NyRAG from this repo, not `pip install nyrag
 ## Learn More
 
 **Tutorials:**
-- [Step-by-step blog post](../vespa-blog-posts/chapter_01/README.md) - Complete beginner tutorial
+- [Step-by-step blog post](blog/README.md) - Complete beginner tutorial
 - [Vespa RAG Blueprint Tutorial](https://docs.vespa.ai/en/tutorials/rag-blueprint.html) - Official docs
 
 **Resources:**
