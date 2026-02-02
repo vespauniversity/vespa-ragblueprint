@@ -5,4 +5,4 @@ output/
 *.pem
 *.pyc
 Makefile
-config/doc_example _test.yml
+config/doc_example_test.yml
