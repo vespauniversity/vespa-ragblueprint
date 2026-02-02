@@ -79,11 +79,11 @@ function updateChatInputState() {
   if (inputEl) {
     inputEl.disabled = isDisabled;
     if (activeProjectName && !hasData) {
-        inputEl.placeholder = "Feed data to start chatting...";
+      inputEl.placeholder = "Feed data to start chatting...";
     } else if (!activeProjectName) {
-        inputEl.placeholder = "Select a project to chat...";
+      inputEl.placeholder = "Select a project to chat...";
     } else {
-        inputEl.placeholder = "Ask a question...";
+      inputEl.placeholder = "Ask a question...";
     }
   }
   if (sendBtn) {
@@ -113,17 +113,17 @@ function setMode(mode) {
       if (noDataMessage) {
         noDataMessage.style.display = "flex";
         if (noDataTitle) noDataTitle.textContent = "No data available";
-        if (noDataDescription) noDataDescription.textContent = activeProjectName 
-            ? `Project "${activeProjectName}" has no indexed documents. Feed data to start chatting.`
-            : "Select a project to start chatting.";
-            
+        if (noDataDescription) noDataDescription.textContent = activeProjectName
+          ? `Project "${activeProjectName}" has no indexed documents. Feed data to start chatting.`
+          : "Select a project to start chatting.";
+
         if (switchToFeedBtn) {
           if (activeProjectName) {
-             switchToFeedBtn.textContent = "Feed Data to This Project";
-             switchToFeedBtn.style.display = "inline-block";
-             switchToFeedBtn.onclick = () => setMode("feed");
+            switchToFeedBtn.textContent = "Feed Data to This Project";
+            switchToFeedBtn.style.display = "inline-block";
+            switchToFeedBtn.onclick = () => setMode("feed");
           } else {
-             switchToFeedBtn.style.display = "none";
+            switchToFeedBtn.style.display = "none";
           }
         }
       }
@@ -966,7 +966,7 @@ async function fetchStats() {
     } else {
       statsEl.textContent = "No documents indexed";
     }
-    
+
     updateChatInputState();
 
   } catch (e) {
@@ -1252,7 +1252,7 @@ async function initializeApp() {
     currentConfig = JSON.parse(JSON.stringify(FALLBACK_CONFIG));
     renderConfigEditor();
     await loadExamples();
-    
+
     // Start in chat mode (will show "Select a project..." state)
     setMode("chat");
   } else {
@@ -1260,7 +1260,7 @@ async function initializeApp() {
     // but useful if we ever re-enable it.
     await selectProject(activeProjectName);
   }
-  
+
   updateChatInputState();
 }
 

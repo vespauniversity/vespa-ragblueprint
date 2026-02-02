@@ -1,7 +1,7 @@
-name: webrag
+name: web
 mode: web
 start_loc: https://vespa.ai/
-deploy_mode: local  # "local" for Docker or "cloud" for Vespa Cloud
+deploy_mode: cloud  # "local" for Docker or "cloud" for Vespa Cloud
 cloud_tenant: your-tenant  # required for cloud mode (env/CLI still override)
 exclude:
   - https://vespa.ai/pricing
@@ -34,8 +34,8 @@ rag_params:
 llm_config:
   # For OpenRouter (default):
   base_url: https://openrouter.ai/api/v1
-  model: anthropic/claude-3.5-sonnet
-  api_key: your-openrouter-key
+  model: openai/gpt-4o-mini
+  api_key: your-llm-api-key-here
   
   # For Ollama (local):
   # base_url: http://localhost:11434/v1
