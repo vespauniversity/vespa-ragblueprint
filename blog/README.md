@@ -332,7 +332,41 @@ Once processing is complete, use the NyRAG chat interface to ask questions!
 
 **That's it!** You now have a fully functional RAG application.
 
-![nyrag_11](img/nyrag_11.png)
+
+---
+
+## Bonus: Try Web Crawling Mode
+
+Want to create a RAG application from website content instead of local documents? NyRAG supports web crawling!
+
+**Quick Start:**
+1. Click the **"Edit Project"** button (pencil icon) in the header
+2. Change `mode` from `docs` to `web`
+3. Set `start_loc` to a website URL (e.g., `https://docs.vespa.ai/`)
+4. Configure crawl settings:
+   - `respect_robots_txt`: Follow robots.txt rules (recommended: `true`)
+   - `follow_subdomains`: Crawl subdomains (e.g., `blog.vespa.ai`)
+   - `exclude`: List of URL patterns to skip (e.g., `/pricing`, `/sales/*`)
+5. Check **"Resume from existing data"** if updating an existing crawl
+6. Click **"Start Crawl Process"**
+
+**Web Mode Features:**
+- Automatic link discovery and crawling
+- Respects `robots.txt` and crawl delays
+- Smart content extraction (removes navigation, ads, boilerplate)
+- Deduplication across similar pages
+- Resume capability for interrupted crawls
+
+**Example Use Cases:**
+- Product documentation sites
+- Company knowledge bases
+- Blog archives
+- Help center articles
+- Technical wikis
+
+**Tip:** Start with a small section of a website (use `exclude` patterns) to test before crawling the entire site. This saves time and Vespa storage!
+
+![nyrag_14](img/nyrag_14.png)
 
 ---
 
