@@ -343,11 +343,10 @@ class Config(BaseModel):
         return self.vespa_app_path is not None
 
     def get_schema_name(self) -> str:
-        """Get the schema name in format nyragPROJECTNAME (lowercase alphanumeric only)."""
-        # Remove hyphens, underscores, and convert to lowercase for valid Vespa schema name
-        clean_name = self.name.replace("-", "").replace("_", "").lower()
-        return f"{clean_name}"
-        # return f"nyrag{clean_name}"
+        """Get the schema name - always returns 'doc' to match deployed schema."""
+        # Always use 'doc' schema which is the deployed schema in vespa_cloud
+        # This works for both web and docs modes
+        return "doc"
 
     def get_app_package_name(self) -> str:
         """Get a valid application package name (lowercase, no hyphens, max 20 chars)."""
