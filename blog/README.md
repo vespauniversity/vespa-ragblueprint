@@ -2,7 +2,7 @@
 
 *From Zero to RAG: A Simple Step-by-Step Tutorial*
 
-![nyrag_ui](img/nyrag_ui.png)
+![nyrag_ui](img/nyrag_11.png)
 
 In this tutorial, you'll build a complete RAG (Retrieval-Augmented Generation) application in just 4 steps:
 
