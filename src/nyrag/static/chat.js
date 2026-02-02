@@ -456,7 +456,7 @@ async function loadProjectConfig() {
     currentConfig = deepMerge(JSON.parse(JSON.stringify(FALLBACK_CONFIG)), parsed);
 
     // Determine mode to load correct schema
-    const mode = currentConfig.mode || "web";
+    const mode = currentConfig.mode || "doc";
     await loadSchema(mode);
 
     renderConfigEditor();
