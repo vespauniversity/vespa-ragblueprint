@@ -2,6 +2,7 @@ archive/
 output/
 .git-old/
 .venv/
+nyrag.egg-info/
 *.pem
 *.pyc
 Makefile
