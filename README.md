@@ -108,7 +108,7 @@ nyrag ui --cloud
 
 ## How to Get Free LLM API Keys
 
-### Option 1: OpenRouter (Recommended)
+### Option 1: OpenRouter
 - Sign up at [openrouter.ai](https://openrouter.ai/)
 - 100+ models available
 - Use model: `meta-llama/llama-3.2-3b-instruct:free`

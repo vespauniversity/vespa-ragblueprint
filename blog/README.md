@@ -122,6 +122,9 @@ source .venv/bin/activate
 
 # Install localy
 uv pip install -e .
+
+# Check that installation
+nyrag --help
 ```
 
 **What is NyRAG?**
@@ -134,13 +137,13 @@ NyRAG is a simple tool that handles:
 
 This modified version is optimized to work with the Vespa RAG Blueprint schema.
 
-**Tip:** The repository includes a `run_nyrag_cloud.sh` script that makes it easy to start NyRAG with your Vespa Cloud deployment!
+**Tip:** The repository includes a `run_nyrag.sh` script that makes it easy to start NyRAG with your Vespa Cloud deployment!
 
 ---
 
 ## Step 3: Configure and Process Your Documents
 
-Create a configuration file to tell NyRAG about your data source and Vespa endpoint:
+Update a configuration file to tell NyRAG about your data source and Vespa endpoint:
 
 **3.1 Update `doc_example.yml` file in config directory:**
 
