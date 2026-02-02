@@ -53,13 +53,13 @@ else
     fi
 fi
 
-# Extract token from doc_example.yml if not already set
+# Extract token from config/doc_example.yml if not already set
 if [ -z "$VESPA_CLOUD_SECRET_TOKEN" ]; then
-    CONFIG_FILE="$SCRIPT_DIR/doc_example.yml"
+    CONFIG_FILE="$SCRIPT_DIR/config/doc_example.yml"
     if [ -f "$CONFIG_FILE" ]; then
-        # Extract token from YAML config (looks for "token: vespa_cloud_...")
-        TOKEN=$(grep -E "^\s+token:\s+vespa_cloud_" "$CONFIG_FILE" | sed -E 's/.*token:\s+//' | tr -d ' ')
-        if [ -n "$TOKEN" ]; then
+        # Extract token from YAML config under vespa_cloud section
+        TOKEN=$(grep -E "^\s+token:\s+\S+" "$CONFIG_FILE" | sed -E 's/.*token:\s+//' | tr -d ' ')
+        if [ -n "$TOKEN" ] && [ "$TOKEN" != "your-vespa-cloud-token-here" ]; then
             export VESPA_CLOUD_SECRET_TOKEN="$TOKEN"
             echo "✅ Using token from $CONFIG_FILE"
         fi
