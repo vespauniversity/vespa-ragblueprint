@@ -4,3 +4,4 @@ output/
 .venv/
 *.pem
 *.pyc
+Makefile
