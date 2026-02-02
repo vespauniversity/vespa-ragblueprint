@@ -116,7 +116,10 @@ Now install the modified NyRAG tool from the vespa-ragblueprint repository:
 git clone https://github.com/vespauniversity/vespa-ragblueprint
 cd vespa-ragblueprint
 
-# Install dependencies using uv (recommended)
+# Install uv if missing
+brew install uv
+
+# Install dependencies using uv
 uv sync
 source .venv/bin/activate
 
