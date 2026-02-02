@@ -142,7 +142,9 @@ This modified version is optimized to work with the Vespa RAG Blueprint schema.
 
 Create a configuration file to tell NyRAG about your data source and Vespa endpoint:
 
-**3.1 Create a config file (e.g., `doc_example.yml`):**
+**3.1 Update `doc_example.yml` config file:**
+
+This file will be used as the configuration for the NyRAG app. You will upload it in the UI in a later step.
 
 **For processing local documents (PDFs, DOCX, etc.):**
 ```yaml
