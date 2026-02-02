@@ -3,6 +3,7 @@ output/
 .git-old/
 .venv/
 src/nyrag.egg-info/
+src/nyrag.egg-info/PKG-INFO
 *.pem
 *.pyc
 Makefile
