@@ -652,11 +652,16 @@ crawlActionBtn.onclick = async () => {
 
     // 2. Start Crawl with the YAML content
     const yamlStr = jsyaml.dump(currentConfig);
+    const resumeCheckbox = document.getElementById("resume-checkbox");
+    const resume = resumeCheckbox ? resumeCheckbox.checked : false;
 
     const startRes = await fetch("/crawl/start", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ config_yaml: yamlStr })
+      body: JSON.stringify({
+        config_yaml: yamlStr,
+        resume: resume
+      })
     });
 
     if (!startRes.ok) {

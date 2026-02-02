@@ -130,6 +130,7 @@ class SearchRequest(BaseModel):
 
 class CrawlRequest(BaseModel):
     config_yaml: str = Field(..., description="YAML configuration content")
+    resume: bool = Field(default=False, description="Resume from existing crawl data")
 
 
 def _resolve_mtls_paths(
@@ -262,7 +263,7 @@ class CrawlManager:
         self.temp_config_path: Optional[str] = None
         self.logs: List[str] = []
 
-    async def start_crawl(self, config_yaml: str):
+    async def start_crawl(self, config_yaml: str, resume: bool = False):
         if self.process and self.process.returncode is None:
             return  # Already running
 
@@ -288,7 +289,8 @@ class CrawlManager:
         with os.fdopen(fd, "w") as f:
             f.write(config_yaml)
 
-        self.process = await asyncio.create_subprocess_exec(
+        # Build command with optional --resume flag
+        cmd = [
             sys.executable,
             "-u",  # Unbuffered output
             "-m",
@@ -296,6 +298,12 @@ class CrawlManager:
             "process",
             "--config",
             self.temp_config_path,
+        ]
+        if resume:
+            cmd.append("--resume")
+
+        self.process = await asyncio.create_subprocess_exec(
+            *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
             env={**os.environ, "PYTHONUNBUFFERED": "1"},
@@ -631,7 +639,7 @@ async def get_crawl_status():
 
 @app.post("/crawl/start")
 async def start_crawl(req: CrawlRequest):
-    await crawl_manager.start_crawl(req.config_yaml)
+    await crawl_manager.start_crawl(req.config_yaml, resume=req.resume)
     return {"status": "started"}
 
 

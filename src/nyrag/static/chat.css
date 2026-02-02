@@ -1264,6 +1264,33 @@ details>div {
   background: var(--panel-bg);
 }
 
+.resume-option {
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+}
+
+.resume-option label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.resume-option input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--accent-color);
+}
+
+.resume-option label:hover {
+  color: var(--text-primary);
+}
+
 .feed-actions .primary-btn {
   width: 100%;
 }
