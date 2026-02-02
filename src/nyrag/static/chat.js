@@ -1095,10 +1095,11 @@ if (configUpload) {
         return;
       }
 
-      // Normalize project name to match backend convention (nyrag + cleaned name)
+      // Normalize project name to match backend convention (cleaned name)
       const rawName = parsed.name;
       const cleanName = rawName.replace(/-/g, "").replace(/_/g, "").toLowerCase();
-      const normalizedName = `nyrag${cleanName}`;
+      const normalizedName = `${cleanName}`;
+      // const normalizedName = `nyrag${cleanName}`;
 
       // Save the uploaded config
       await fetch("/config", {
