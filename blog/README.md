@@ -271,7 +271,7 @@ llm_config:
 ./run_nyrag.sh
 ```
 
-The `run_nyrag_cloud.sh` script will:
+The `run_nyrag.sh` script will:
 - Check your Vespa Cloud connection
 - Extract the token from your config file
 - Set up all environment variables
@@ -324,6 +324,8 @@ Once processing is complete, use the NyRAG chat interface to ask questions!
 - "Find information about [specific topic]"
 
 **That's it!** You now have a fully functional RAG application.
+
+![nyrag_11](img/nyrag_11.png)
 
 ---
 

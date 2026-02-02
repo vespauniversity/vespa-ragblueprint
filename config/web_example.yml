@@ -1,4 +1,4 @@
-name: webrag
+name: web
 mode: web
 start_loc: https://vespa.ai/
 # Use existing Vespa app instead of generating new one
