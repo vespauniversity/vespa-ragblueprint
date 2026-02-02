@@ -91,6 +91,7 @@ First, deploy the pre-configured RAG Blueprint to Vespa Cloud (it's free to star
 - Go to application view
   ![image_12](img/image_12.png)
   ![image_13](img/image_13.png)
+  ![image_15](img/image_15.png)
 
 **1.4 Note your endpoint URL:**
 
