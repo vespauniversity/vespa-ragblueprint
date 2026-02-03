@@ -85,6 +85,9 @@ if [ -z "$TOKEN_ENDPOINT" ]; then
     fi
 fi
 
+# Export TOKEN_ENDPOINT so child processes (like Python scripts) can access it
+export TOKEN_ENDPOINT
+
 # Extract token from config/doc_example.yml if not already set
 if [ -z "$VESPA_CLOUD_SECRET_TOKEN" ]; then
     CONFIG_FILE="$SCRIPT_DIR/config/doc_example.yml"
@@ -207,8 +210,9 @@ else
     echo "Testing connection to Vespa Cloud..."
     echo "  Endpoint: $TOKEN_ENDPOINT"
 
-# Run connection test with timeout command (max 20 seconds)
-CONNECTION_TEST=$(timeout 20 .venv/bin/python3 << 'PYTHON_SCRIPT'
+    # Write connection test script to temporary file
+    TEMP_TEST_SCRIPT=$(mktemp)
+    cat > "$TEMP_TEST_SCRIPT" << 'PYTHON_SCRIPT'
 import urllib.request
 import urllib.error
 import json
@@ -248,43 +252,44 @@ except urllib.error.URLError as e:
 except Exception as e:
     print(f"ERROR_UNKNOWN: {e}")
 PYTHON_SCRIPT
-)
 
-# Check exit code of timeout command
-TIMEOUT_EXIT=$?
+    # Run connection test directly (Python script has built-in 10s timeout)
+    TEMP_OUTPUT=$(mktemp)
+    python3 "$TEMP_TEST_SCRIPT" > "$TEMP_OUTPUT" 2>&1
+    TIMEOUT_EXIT=$?
+    CONNECTION_TEST=$(cat "$TEMP_OUTPUT")
 
-if [ $TIMEOUT_EXIT -eq 124 ]; then
-    echo "⚠️  Connection test timeout (>20s)"
-    echo "   Continuing anyway - you can check connection in the UI"
-    echo ""
-elif [ "$CONNECTION_TEST" = "OK" ]; then
-    echo "✅ Successfully connected to Vespa Cloud"
-    echo ""
-elif [ "$CONNECTION_TEST" = "ERROR_AUTH" ]; then
-    echo "❌ Authentication failed - Invalid token"
-    echo ""
-    echo "Please check your token in $CONFIG_FILE"
-    exit 1
-elif [ "$CONNECTION_TEST" = "ERROR_NOT_FOUND" ]; then
-    echo "❌ Endpoint not found (404)"
-    echo ""
-    echo "Please check your endpoint in $CONFIG_FILE"
-    exit 1
-elif [[ "$CONNECTION_TEST" == ERROR_NETWORK* ]]; then
-    echo "❌ Network error - Cannot reach Vespa Cloud"
-    echo "   Error: $CONNECTION_TEST"
-    echo ""
-    echo "Please check your endpoint and internet connection"
-    exit 1
-elif [ -z "$CONNECTION_TEST" ]; then
-    echo "⚠️  Connection test failed to complete"
-    echo "   Continuing anyway - you can check connection in the UI"
-    echo ""
-else
-    echo "⚠️  Connection test returned: $CONNECTION_TEST"
-    echo "   Continuing anyway - you can check connection in the UI"
-    echo ""
-fi
+    # Clean up temp files
+    rm -f "$TEMP_TEST_SCRIPT" "$TEMP_OUTPUT"
+
+    if [ "$CONNECTION_TEST" = "OK" ]; then
+        echo "✅ Successfully connected to Vespa Cloud"
+        echo ""
+    elif [ "$CONNECTION_TEST" = "ERROR_AUTH" ]; then
+        echo "❌ Authentication failed - Invalid token"
+        echo ""
+        echo "Please check your token in $CONFIG_FILE"
+        exit 1
+    elif [ "$CONNECTION_TEST" = "ERROR_NOT_FOUND" ]; then
+        echo "❌ Endpoint not found (404)"
+        echo ""
+        echo "Please check your endpoint in $CONFIG_FILE"
+        exit 1
+    elif [[ "$CONNECTION_TEST" == ERROR_NETWORK* ]]; then
+        echo "❌ Network error - Cannot reach Vespa Cloud"
+        echo "   Error: $CONNECTION_TEST"
+        echo ""
+        echo "Please check your endpoint and internet connection"
+        exit 1
+    elif [ -z "$CONNECTION_TEST" ]; then
+        echo "⚠️  Connection test failed to complete"
+        echo "   Continuing anyway - you can check connection in the UI"
+        echo ""
+    else
+        echo "⚠️  Connection test returned: $CONNECTION_TEST"
+        echo "   Continuing anyway - you can check connection in the UI"
+        echo ""
+    fi
 fi  # End of SKIP_CONNECTION_TEST check
 
 # Check if existing vespa_app exists
