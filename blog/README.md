@@ -207,7 +207,7 @@ llm_config:
   model: meta-llama/llama-3.2-3b-instruct:free  # Free model
   api_key: your-llm-api-key  # See below for free options
 ```
-Then, place your document files in the directory specified by `start_loc`, or simply use the existing directory.
+Then, place your document files in the directory specified by `start_loc`, or simply use the existing `./dataset` directory. Additionally, set `vespa_app_path` to `./vespa_cloud` to use the existing Vespa application instead of generating a new one.
 
 <!--
 **For crawling websites:**
