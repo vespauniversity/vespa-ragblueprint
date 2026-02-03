@@ -891,13 +891,17 @@ def _fetch_chunks(query: str, hits: int, k: int) -> List[Dict[str, Any]]:
         raise HTTPException(status_code=status_code, detail=detail)
 
     hits_data = vespa_response.json.get("root", {}).get("children", []) or []
+    logger.info(f"*** hits_data count={len(hits_data)}")
+    if hits_data:
+        logger.info(f"*** first hit fields={list(hits_data[0].get('fields', {}).keys())}")
     chunks: List[Dict[str, Any]] = []
     for hit in hits_data:
         fields = hit.get("fields", {}) or {}
         loc = fields.get("loc") or fields.get("id") or ""
-        chunk_texts = fields.get("chunks") or []  # Field name from no-chunks summary
+        chunk_texts = fields.get("chunks") or []
+        text_field = fields.get("text", "")[:100]  # First 100 chars
         hit_score_raw = hit.get("relevance", 0.0)
-        logger.info(f"Hit loc={loc} score={hit_score_raw} chunks={len(chunk_texts)}")
+        logger.info(f"Hit loc={loc} score={hit_score_raw} chunks={len(chunk_texts)} text_len={len(text_field)}")
         try:
             hit_score = float(hit_score_raw)
         except (TypeError, ValueError):
@@ -922,6 +926,15 @@ def _fetch_chunks(query: str, hits: int, k: int) -> List[Dict[str, Any]]:
                     "source_query": query,
                 }
             )
+        # Fallback: if no chunks but has text field, use text directly
+        if not chunk_texts and fields.get("text"):
+            chunks.append({
+                "loc": loc,
+                "chunk": fields.get("text", "")[:1000],  # First 1000 chars
+                "score": hit_score,
+                "hit_score": hit_score,
+                "source_query": query,
+            })
     return chunks
 
 
