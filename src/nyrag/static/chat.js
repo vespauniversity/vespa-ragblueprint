@@ -312,12 +312,10 @@ function renderConfigEditor() {
     if (schemaItem.type === 'nested') {
       yamlContainer.appendChild(line);
 
-      // Ensure object exists
+      // Ensure object exists - initialize if missing
       if (value === undefined || value === null) {
-        // If it's a nested object but missing in config, maybe init it?
-        // For now, let's just skip unless we want to force it.
-        // But usually deepMerge handles init.
-        return;
+        value = {};
+        parentObj[key] = value;
       }
 
       const fields = schemaItem.fields || {};
