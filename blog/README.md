@@ -589,7 +589,7 @@ schema doc {
 
 **Next Steps:**
 *   Get the code: [vespa-ragblueprint on GitHub](https://github.com/vespauniversity/vespa-ragblueprint)
-*   Get the original code: [NyRAG GitHub](https://github.com/vespaai-playground/NyRAG)
+*   NyRAG original code: [NyRAG GitHub](https://github.com/vespaai-playground/NyRAG)
 *   Learn more: [RAG Blueprint Tutorial](https://docs.vespa.ai/en/tutorials/rag-blueprint.html)
 *   Get help: Join the [Vespa Slack](http://slack.vespa.ai/)
 *   Try it now: [Vespa Cloud Free Trial](https://console.vespa-cloud.com/)
