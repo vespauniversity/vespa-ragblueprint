@@ -54,6 +54,16 @@ class LLMConfig(BaseModel):
     api_key: Optional[str] = None
 
 
+class VespaCloud(BaseModel):
+    """Configuration for Vespa Cloud deployment."""
+
+    endpoint: Optional[str] = None
+    token: Optional[str] = None
+    cloud_tenant: Optional[str] = None
+    cloud_app: Optional[str] = None
+    cloud_instance: Optional[str] = None
+
+
 class DeployConfig(BaseModel):
     """Configuration for deployment settings.
 
@@ -289,6 +299,7 @@ class Config(BaseModel):
     crawl_params: Optional[CrawlParams] = None
     doc_params: Optional[DocParams] = None
     llm_config: Optional[LLMConfig] = None
+    vespa_cloud: Optional[VespaCloud] = None
 
     # Hidden vespa connection fields - persisted for inference, not shown in UI editor
     # These are populated after deployment and used for feeding/querying
