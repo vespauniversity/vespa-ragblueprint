@@ -463,6 +463,17 @@ def get_config_options(mode: str = "web") -> Dict[str, Any]:
         },
         "cloud_tenant": {"type": "string", "label": "cloud_tenant", "optional": True},
         "exclude": {"type": "list", "label": "exclude"},
+        "vespa_cloud": {
+            "type": "nested",
+            "label": "vespa_cloud",
+            "fields": {
+                "endpoint": {"type": "string", "label": "endpoint"},
+                "token": {"type": "string", "label": "token", "masked": True},
+                "cloud_tenant": {"type": "string", "label": "cloud_tenant"},
+                "cloud_app": {"type": "string", "label": "cloud_app"},
+                "cloud_instance": {"type": "string", "label": "cloud_instance"},
+            },
+        },
     }
 
     # Web Mode Specifics
