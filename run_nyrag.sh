@@ -204,6 +204,7 @@ echo "  Endpoint: $TOKEN_ENDPOINT"
 # Run connection test with timeout command (max 20 seconds)
 CONNECTION_TEST=$(timeout 20 python3 << 'PYTHON_SCRIPT'
 import urllib.request
+import urllib.error
 import json
 import sys
 import os
