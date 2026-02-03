@@ -18,6 +18,30 @@ const editProjectBtn = document.getElementById("edit-project-btn");
 const projectSelector = document.getElementById("project-selector");
 const projectSelectorContainer = document.getElementById("project-selector-container");
 
+// Advanced menu
+const advancedMenuBtn = document.getElementById("advanced-menu-btn");
+const advancedMenu = document.getElementById("advanced-menu");
+
+if (advancedMenuBtn && advancedMenu) {
+  advancedMenuBtn.onclick = (e) => {
+    e.stopPropagation();
+    const isVisible = advancedMenu.style.display === "block";
+    advancedMenu.style.display = isVisible ? "none" : "block";
+  };
+
+  // Close menu when clicking outside
+  document.addEventListener("click", (e) => {
+    if (!advancedMenu.contains(e.target) && e.target !== advancedMenuBtn) {
+      advancedMenu.style.display = "none";
+    }
+  });
+
+  // Close menu when clicking a menu item
+  advancedMenu.addEventListener("click", () => {
+    advancedMenu.style.display = "none";
+  });
+}
+
 // Switch to feed button in no-data message
 const switchToFeedBtn = document.getElementById("switch-to-feed-btn");
 
@@ -1264,10 +1288,30 @@ async function initializeApp() {
     console.error("Failed to fetch initial stats", e);
   }
 
-  // Set indicator to "New Project"
+  // Check if we should auto-load default config
+  let autoLoadedProject = false;
+  try {
+    const res = await fetch("/auto-load-config");
+    if (res.ok) {
+      const data = await res.json();
+      if (data.auto_load && data.project_name) {
+        console.log("Auto-loading project:", data.project_name);
+        activeProjectName = data.project_name;
+        autoLoadedProject = true;
+      }
+    }
+  } catch (e) {
+    console.error("Failed to auto-load config", e);
+  }
+
+  // Set indicator
   const indicator = document.getElementById("active-project-indicator");
   if (indicator) {
-    indicator.textContent = "New Project";
+    if (autoLoadedProject) {
+      indicator.textContent = `Project: ${activeProjectName}`;
+    } else {
+      indicator.textContent = "New Project";
+    }
   }
 
   // Load available projects
@@ -1276,8 +1320,10 @@ async function initializeApp() {
   // Try to load user settings
   await loadUserSettings();
 
-  // If no active project loaded (which is default now), start in Chat mode (empty state)
-  if (!activeProjectName) {
+  // If we auto-loaded a project, select it
+  if (autoLoadedProject && activeProjectName) {
+    await selectProject(activeProjectName);
+  } else if (!activeProjectName) {
     // Pre-load schemas/configs so Feed mode is ready if they switch
     await loadSchema("web");
     currentConfig = JSON.parse(JSON.stringify(FALLBACK_CONFIG));
@@ -1287,8 +1333,7 @@ async function initializeApp() {
     // Start in chat mode (will show "Select a project..." state)
     setMode("chat");
   } else {
-    // This branch is technically unreachable now since we disabled auto-select,
-    // but useful if we ever re-enable it.
+    // This branch is for when a project is selected from settings
     await selectProject(activeProjectName);
   }
 

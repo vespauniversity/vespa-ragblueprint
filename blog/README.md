@@ -131,6 +131,13 @@ brew install vespa-cli
 # Verify vespa installation
 vespa version
 
+# Set Vespa target to cloud
+vespa config set target cloud
+
+# Set Vespa application config
+# e.g. vespa config set application mytenant.rag-blueprint.default
+vespa config set application <tenant-name>.<application-name>.<instance-name>
+
 # Install uv if missing (Fast, modern Python package manager)
 
 # macOS

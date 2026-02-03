@@ -167,6 +167,49 @@ body {
     gap: 8px;
 }
 
+/* Advanced Menu */
+.advanced-menu-container {
+  position: relative;
+}
+
+.advanced-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  min-width: 200px;
+  z-index: 1000;
+  padding: 4px;
+}
+
+.advanced-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  width: 100%;
+  border: none;
+  background: none;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: var(--font-family);
+  text-align: left;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+}
+
+.advanced-menu-item:hover {
+  background: var(--panel-bg);
+}
+
+.advanced-menu-item svg {
+  flex-shrink: 0;
+}
+
 .icon-btn {
     display: flex;
     align-items: center;

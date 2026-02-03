@@ -580,6 +580,53 @@ async def get_deploy_mode():
     return {"mode": "cloud" if is_cloud else "local"}
 
 
+@app.get("/auto-load-config")
+async def get_auto_load_config():
+    """Check if default config should be auto-loaded and return config info.
+
+    Returns project info if config/doc_example.yml is properly configured.
+    """
+    config_path = Path("config/doc_example.yml")
+
+    if not config_path.exists():
+        return {"auto_load": False}
+
+    try:
+        import yaml
+        with open(config_path, "r") as f:
+            config_data = yaml.safe_load(f)
+
+        if not config_data:
+            return {"auto_load": False}
+
+        project_name = config_data.get("name", "doc")
+
+        # Check if endpoint and token are configured (not placeholders)
+        vespa_cloud = config_data.get("vespa_cloud", {})
+        endpoint = vespa_cloud.get("endpoint", "")
+        token = vespa_cloud.get("token", "")
+
+        is_configured = (
+            endpoint and
+            endpoint != "https://your-vespa-cloud-endpoint-here.vespa-app.cloud" and
+            token and
+            token != "your-vespa-cloud-token-here"
+        )
+
+        if is_configured:
+            return {
+                "auto_load": True,
+                "project_name": project_name,
+                "config_path": str(config_path)
+            }
+
+        return {"auto_load": False}
+
+    except Exception as e:
+        logger.warning(f"Failed to check auto-load config: {e}")
+        return {"auto_load": False}
+
+
 @app.get("/projects")
 async def get_projects():
     """List available projects."""

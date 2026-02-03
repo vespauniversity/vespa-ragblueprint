@@ -114,6 +114,34 @@ echo "  VESPA_PORT=$VESPA_PORT"
 echo "  VESPA_CLOUD_SECRET_TOKEN: ${VESPA_CLOUD_SECRET_TOKEN:+***set***}"
 echo ""
 
+# Validate config file
+echo "Validating configuration..."
+CONFIG_FILE="$SCRIPT_DIR/config/doc_example.yml"
+if [ ! -f "$CONFIG_FILE" ]; then
+    echo "❌ Config file not found: $CONFIG_FILE"
+    echo "Please create it from the example template."
+    exit 1
+fi
+
+# Check if endpoint is configured (not placeholder)
+CONFIG_ENDPOINT=$(grep -E "^\s+endpoint:\s+https://" "$CONFIG_FILE" | sed -E 's/.*endpoint:\s+//' | tr -d ' ' | head -1)
+if [ -z "$CONFIG_ENDPOINT" ] || [ "$CONFIG_ENDPOINT" = "https://your-vespa-cloud-endpoint-here.vespa-app.cloud" ]; then
+    echo "❌ Vespa Cloud endpoint not configured in $CONFIG_FILE"
+    echo "Please set a valid endpoint under vespa_cloud.endpoint"
+    exit 1
+fi
+
+# Check if token is configured (not placeholder)
+CONFIG_TOKEN=$(grep -E "^\s+token:\s+\S+" "$CONFIG_FILE" | sed -E 's/.*token:\s+//' | tr -d ' ' | head -1)
+if [ -z "$CONFIG_TOKEN" ] || [ "$CONFIG_TOKEN" = "your-vespa-cloud-token-here" ]; then
+    echo "❌ Vespa Cloud token not configured in $CONFIG_FILE"
+    echo "Please set a valid token under vespa_cloud.token"
+    exit 1
+fi
+
+echo "✅ Configuration validated successfully"
+echo ""
+
 # Check if existing vespa_app exists
 VESPA_APP_PATH="$SCRIPT_DIR/vespa_cloud"
 if [ ! -d "$VESPA_APP_PATH" ]; then
@@ -127,6 +155,13 @@ echo ""
 # Verify deployment is ready
 echo "Verifying Vespa Cloud deployment..."
 echo "✅ Vespa Cloud deployment is ready"
+echo ""
+echo "Starting NyRAG UI..."
+echo "Opening browser at http://localhost:8000"
+echo ""
+
+# Open browser after a short delay (in background)
+(sleep 2 && python3 -m webbrowser "http://localhost:8000" 2>/dev/null) &
 
 # Run the UI (token-based auth, no browser login needed)
 # The VESPA_CLOUD_SECRET_TOKEN environment variable handles authentication
