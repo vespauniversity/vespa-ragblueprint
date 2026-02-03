@@ -1002,10 +1002,19 @@ async function fetchStats() {
     // Update hasData state
     hasData = data.has_data === true;
 
-    if (data.documents) {
+    // Check for connection errors first
+    if (data.connection_error) {
+      statsEl.textContent = `⚠️ ${data.connection_error}`;
+      statsEl.style.color = "#ef4444"; // Red color for errors
+      statsEl.title = "Cannot connect to Vespa - check your configuration";
+    } else if (data.documents) {
       statsEl.textContent = `${data.documents} documents indexed`;
+      statsEl.style.color = ""; // Reset to default
+      statsEl.title = "";
     } else {
       statsEl.textContent = "No documents indexed";
+      statsEl.style.color = ""; // Reset to default
+      statsEl.title = "";
     }
 
     updateChatInputState();

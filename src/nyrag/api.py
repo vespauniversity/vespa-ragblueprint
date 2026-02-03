@@ -475,6 +475,7 @@ async def stats() -> Dict[str, Any]:
                 # Check if we have valid cloud credentials
                 is_authenticated = is_vespa_cloud_authenticated()
 
+    connection_error = None
     try:
         res = vespa_app.query(
             body={"yql": "select * from sources * where true", "hits": 0},
@@ -486,7 +487,24 @@ async def stats() -> Dict[str, Any]:
         elif isinstance(total, str) and total.isdigit():
             doc_count = int(total)
     except Exception as e:
+        error_msg = str(e)
         logger.warning(f"Failed to fetch Vespa doc count: {e}")
+
+        # Categorize the error for better user feedback
+        if "NameResolutionError" in error_msg or "Failed to resolve" in error_msg:
+            connection_error = "Cannot resolve endpoint - Check your endpoint URL"
+        elif "Connection refused" in error_msg:
+            connection_error = "Connection refused - Vespa may not be running"
+        elif "Timeout" in error_msg or "timed out" in error_msg:
+            connection_error = "Connection timeout - Vespa is not responding"
+        elif "401" in error_msg or "Unauthorized" in error_msg:
+            connection_error = "Authentication failed - Check your token"
+        elif "403" in error_msg or "Forbidden" in error_msg:
+            connection_error = "Access forbidden - Check your credentials"
+        elif "404" in error_msg:
+            connection_error = "Endpoint not found - Check your deployment"
+        else:
+            connection_error = "Connection error - Cannot reach Vespa"
 
     # Note: The new schema uses Vespa's built-in chunking (chunk fixed-length 1024)
     # and doesn't have a chunk_count field. Chunk count is not available with this schema.
@@ -499,6 +517,7 @@ async def stats() -> Dict[str, Any]:
         "deploy_mode": deploy_mode,
         "is_authenticated": is_authenticated,
         "has_data": doc_count is not None and doc_count > 0,
+        "connection_error": connection_error,
     }
 
 
