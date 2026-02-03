@@ -252,6 +252,13 @@ const FALLBACK_CONFIG = {
     base_url: "https://openrouter.ai/api/v1",
     model: "gpt-4",
     api_key: ""
+  },
+  vespa_cloud: {
+    endpoint: "https://your-vespa-cloud-endpoint-here.vespa-app.cloud",
+    token: "your-vespa-cloud-token-here",
+    cloud_tenant: "your-tenant",
+    cloud_app: "rag-blueprint",
+    cloud_instance: "default"
   }
 };
 
