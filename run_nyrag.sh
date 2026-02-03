@@ -37,18 +37,39 @@ fi
 
 echo "✅ Vespa Cloud deployment is accessible"
 
-# Get Vespa Cloud endpoint URL - prefer environment variable, fallback to vespa status
+# Get Vespa Cloud endpoint URL
+# Priority: 1. Environment variable, 2. Config file, 3. vespa status
+TOKEN_ENDPOINT=""
+
+# First: Environment variable (highest priority for temporary overrides)
 if [ -n "$VESPA_CLOUD_ENDPOINT" ]; then
     TOKEN_ENDPOINT="$VESPA_CLOUD_ENDPOINT"
-    echo "Using endpoint from VESPA_CLOUD_ENDPOINT environment variable"
-else
-    # Extract the token endpoint (not mTLS) from vespa status
+    echo "✅ Using endpoint from VESPA_CLOUD_ENDPOINT environment variable"
+fi
+
+# Second: Config file (persistent configuration)
+if [ -z "$TOKEN_ENDPOINT" ]; then
+    CONFIG_FILE="$SCRIPT_DIR/config/doc_example.yml"
+    if [ -f "$CONFIG_FILE" ]; then
+        CONFIG_ENDPOINT=$(grep -E "^\s+endpoint:\s+https://" "$CONFIG_FILE" | sed -E 's/.*endpoint:\s+//' | tr -d ' ' | head -1)
+        if [ -n "$CONFIG_ENDPOINT" ] && [ "$CONFIG_ENDPOINT" != "https://your-vespa-cloud-endpoint-here.vespa-app.cloud" ]; then
+            TOKEN_ENDPOINT="$CONFIG_ENDPOINT"
+            echo "✅ Using endpoint from config file: $TOKEN_ENDPOINT"
+        fi
+    fi
+fi
+
+# Third: Fallback to vespa status (auto-detection)
+if [ -z "$TOKEN_ENDPOINT" ]; then
     TOKEN_ENDPOINT=$(vespa status 2>/dev/null | grep "(token)" | grep -oP 'https://[^\s]+' || echo "")
     if [ -n "$TOKEN_ENDPOINT" ]; then
         echo "✅ Using token endpoint from vespa status: $TOKEN_ENDPOINT"
     else
         echo "❌ Could not determine Vespa Cloud token endpoint"
-        echo "Please set: export VESPA_CLOUD_ENDPOINT='https://your-app.vespa-app.cloud'"
+        echo "Please either:"
+        echo "  1. Set endpoint in config/doc_example.yml under vespa_cloud.endpoint (recommended)"
+        echo "  2. Export VESPA_CLOUD_ENDPOINT='https://your-app.vespa-app.cloud'"
+        echo "  3. Ensure 'vespa status' returns your deployment info"
         exit 1
     fi
 fi

@@ -109,6 +109,8 @@ You'll use both in Step 3 to connect NyRAG to Vespa, and optionally for direct q
 
 ## Step 2: Install Modified NyRAG
 
+
+
 Now install the modified NyRAG tool from the vespa-ragblueprint repository:
 
 ```bash
@@ -116,17 +118,41 @@ Now install the modified NyRAG tool from the vespa-ragblueprint repository:
 git clone https://github.com/vespauniversity/vespa-ragblueprint
 cd vespa-ragblueprint
 
-# Install uv if missing
+# Install vespa cli if missing
+
+# macOS
+brew install vespa-cli
+
+# Or Linux, macOS, Windows
+# Download binary from GitHub releases
+# Visit: https://github.com/vespa-engine/vespa/releases
+# Place the extracted binary in an executable path directory so it can be called from anywhere
+
+# Verify vespa installation
+vespa version
+
+# Install uv (Fast, modern Python package manager)
+
+# macOS
 brew install uv
+
+# Linux & macOS
+# curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows (PowerShell)
+# powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# Verify uv installation
+uv --version
 
 # Install dependencies using uv
 uv sync
 source .venv/bin/activate
 
-# Install localy
+# Install nyrag localy
 uv pip install -e .
 
-# Check that installation
+# Verify nyrag installation
 nyrag --help
 ```
 
@@ -148,7 +174,7 @@ This modified version is optimized to work with the Vespa RAG Blueprint schema.
 
 Update a configuration file to tell NyRAG about your data source and Vespa endpoint:
 
-**3.1 Update `doc_example.yml` file in config directory:**
+**3.1 Update `doc_example.yml` file in config directory of the project:**
 
 This file will be used as the configuration for the NyRAG app. You will upload it in the UI in a later step.
 
@@ -298,7 +324,7 @@ Open http://localhost:8000 in your browser.
 **3.3 Process your documents:**
 
 In the NyRAG UI, you can:
-- Upload or select your configuration (e.g., `doc_example.yml`)
+- Upload your updated `doc_example.yml` file in config directory of the project)
 - Feed data to this project
 - Monitor processing progress
 - See how many documents are processed
@@ -367,7 +393,7 @@ Want to create a RAG application from website content instead of local documents
 - Help center articles
 - Technical wikis
 
-**Tip:** Start with a small section of a website (use `exclude` patterns) to test before crawling the entire site. This saves time and Vespa storage!
+**Tip:** Start with a small section of a website (use `exclude` patterns) to test before crawling the entire site, and ensure **"Resume from existing data"** is selected. This saves time and Vespa storage!
 
 ![nyrag_14](img/nyrag_14.png)
 
