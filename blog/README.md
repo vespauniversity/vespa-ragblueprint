@@ -138,7 +138,6 @@ brew install uv
 
 # Linux & macOS
 # curl -LsSf https://astral.sh/uv/install.sh | sh
-
 # Windows (PowerShell)
 # powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 
