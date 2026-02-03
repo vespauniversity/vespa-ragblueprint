@@ -294,8 +294,17 @@ echo "Starting NyRAG UI..."
 echo "Opening browser at http://localhost:8000"
 echo ""
 
-# Open browser after a short delay (in background)
-(sleep 10 && python3 -m webbrowser "http://localhost:8000" 2>/dev/null) &
+# Open browser when server is ready (in background)
+(
+  # Wait for server to be ready (max 30 seconds)
+  for i in {1..30}; do
+    if curl -s http://localhost:8000/ > /dev/null 2>&1; then
+      python3 -m webbrowser "http://localhost:8000" 2>/dev/null
+      break
+    fi
+    sleep 1
+  done
+) &
 
 # Run the UI (token-based auth, no browser login needed)
 # The VESPA_CLOUD_SECRET_TOKEN environment variable handles authentication
