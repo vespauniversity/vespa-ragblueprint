@@ -207,7 +207,7 @@ llm_config:
   model: meta-llama/llama-3.2-3b-instruct:free  # Free model
   api_key: your-llm-api-key  # See below for free options
 ```
-Then put your document files in that start_loc directory.
+Then, place your document files in the directory specified by `start_loc`, or simply use the existing directory.
 
 <!--
 **For crawling websites:**
