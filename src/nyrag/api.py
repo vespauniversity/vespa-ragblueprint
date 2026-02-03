@@ -3,6 +3,7 @@ import json
 import os
 import sys
 import tempfile
+import yaml
 from functools import partial
 from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, List, Optional, Set, Tuple
@@ -478,14 +479,24 @@ async def stats() -> Dict[str, Any]:
     connection_error = None
     try:
         res = vespa_app.query(
-            body={"yql": "select * from sources * where true", "hits": 0},
+            body={
+                "yql": f"select * from {settings['schema_name']} where true",
+                "hits": 0,
+                "timeout": "10s",
+            },
             schema=settings["schema_name"],
         )
+        logger.info(f"Vespa stats response: {res.json}")
+        logger.info(f"Schema used: {settings['schema_name']}")
         total = res.json.get("root", {}).get("fields", {}).get("totalCount")
         if isinstance(total, int):
             doc_count = total
         elif isinstance(total, str) and total.isdigit():
             doc_count = int(total)
+        else:
+            # Handle case where total is 0 or missing
+            doc_count = total if total is not None else None
+        logger.info(f"Document count parsed: {doc_count}")
     except Exception as e:
         error_msg = str(e)
         logger.warning(f"Failed to fetch Vespa doc count: {e}")
@@ -675,6 +686,94 @@ async def select_project(project_name: str = Body(..., embed=True)):
         raise HTTPException(status_code=404, detail=str(e))
 
 
+@app.get("/configs/list")
+async def list_configs():
+    """List all available config files in config/ directory."""
+    config_dir = Path("config")
+    if not config_dir.exists():
+        return {"configs": []}
+
+    configs = []
+    for yml_file in config_dir.glob("*.yml"):
+        try:
+            with open(yml_file, "r") as f:
+                config_data = yaml.safe_load(f)
+                mode = config_data.get("mode", "unknown")
+                configs.append({
+                    "name": yml_file.stem,  # filename without .yml
+                    "mode": mode,
+                    "path": str(yml_file)
+                })
+        except Exception as e:
+            logger.warning(f"Failed to read config {yml_file}: {e}")
+
+    return {"configs": configs}
+
+
+@app.post("/configs/create")
+async def create_config(config_name: str = Body(...), mode: str = Body(...)):
+    """Create a new config file from template."""
+    if not config_name or not mode:
+        raise HTTPException(status_code=400, detail="Config name and mode are required")
+
+    # Validate mode
+    if mode not in ["docs", "web"]:
+        raise HTTPException(status_code=400, detail="Mode must be 'docs' or 'web'")
+
+    # Load template
+    template_path = Path(__file__).parent / "examples" / f"{mode[:-1] if mode == 'docs' else mode}.yml"
+    if not template_path.exists():
+        raise HTTPException(status_code=404, detail=f"Template not found for mode: {mode}")
+
+    with open(template_path, "r") as f:
+        template_content = f.read()
+
+    # Update name in template
+    config_data = yaml.safe_load(template_content)
+    config_data["name"] = config_name
+    config_data["mode"] = mode
+
+    # Save new config
+    config_dir = Path("config")
+    config_dir.mkdir(exist_ok=True)
+    config_path = config_dir / f"{config_name}.yml"
+
+    if config_path.exists():
+        raise HTTPException(status_code=400, detail=f"Config '{config_name}' already exists")
+
+    with open(config_path, "w") as f:
+        yaml.dump(config_data, f, default_flow_style=False, sort_keys=False)
+
+    return {"status": "created", "name": config_name, "path": str(config_path)}
+
+
+@app.get("/configs/load")
+async def load_config(name: str):
+    """Load a config file by name.
+
+    Checks output directory first for saved configs, then falls back to config directory.
+    """
+    # Normalize the name for output directory (removes underscores/hyphens)
+    normalized_name = _normalize_project_name(name)
+
+    # Check if there's a saved version in output directory
+    output_config_path = Path("output") / normalized_name / "conf.yml"
+    if output_config_path.exists():
+        with open(output_config_path, "r") as f:
+            content = f.read()
+        return {"name": name, "content": content, "source": "output"}
+
+    # Fall back to original config in config directory
+    config_path = Path("config") / f"{name}.yml"
+    if not config_path.exists():
+        raise HTTPException(status_code=404, detail=f"Config '{name}' not found")
+
+    with open(config_path, "r") as f:
+        content = f.read()
+
+    return {"name": name, "content": content, "source": "config"}
+
+
 @app.get("/user-settings")
 async def get_user_settings():
     """Get user settings from ~/.nyrag/settings.json"""
@@ -741,6 +840,7 @@ async def search(req: SearchRequest) -> Dict[str, Any]:
         "ranking.profile": req.ranking or DEFAULT_RANKING,
         "input.query(float_embedding)": float_embedding,  # Pass as float_embedding, not embedding
         "input.query(k)": req.k,
+        "timeout": "20s",  # Increased timeout for slow Vespa Cloud queries
     }
     vespa_response = vespa_app.query(body=body, schema=settings["schema_name"])
 
@@ -780,7 +880,7 @@ def _fetch_chunks(query: str, hits: int, k: int) -> List[Dict[str, Any]]:
         "ranking.profile": DEFAULT_RANKING,
         "input.query(float_embedding)": float_embedding,  # Pass as float_embedding, not embedding
         "input.query(k)": k,
-        # Note: summaryFeatures are defined in the rank profile, not in presentation
+        "timeout": "20s",  # Increased timeout for slow Vespa Cloud queries
     }
     # log body
     logger.info(f"*** query={body}")

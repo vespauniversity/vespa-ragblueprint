@@ -45,10 +45,11 @@
         <div class="header-divider"></div>
 
         <div class="header-actions-group">
-          <button id="edit-project-btn" class="icon-btn" title="Edit Project Config" style="display: none;">
+          <button id="save-config-btn" class="icon-btn" title="Save Config">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-              <path d="M18.5 2.5a2.121 2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+              <polyline points="17 21 17 13 7 13 7 21"></polyline>
+              <polyline points="7 3 7 8 15 8"></polyline>
             </svg>
           </button>
 
@@ -62,21 +63,11 @@
               </svg>
             </button>
             <div id="advanced-menu" class="advanced-menu" style="display: none;">
-              <label for="config-upload" class="advanced-menu-item">
+              <button id="edit-config-menu-btn" class="advanced-menu-item">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                  <polyline points="17 8 12 3 7 8"></polyline>
-                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                  <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
                 </svg>
-                Upload Config
-                <input type="file" id="config-upload" accept=".yml,.yaml" style="display: none;">
-              </label>
-              <button id="create-new-btn" class="advanced-menu-item">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-                Create New Project
+                Edit Config
               </button>
             </div>
           </div>
@@ -101,29 +92,34 @@
         <p style="margin-top: 8px; font-size: 14px; opacity: 0.6;">I can help you find information from your documents.
         </p>
       </div>
-      
+
       <!-- No data message - shown when corpus is empty -->
       <div class="no-data-message" id="no-data-message" style="display: none;">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity: 0.5; margin-bottom: 16px;">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+          style="opacity: 0.5; margin-bottom: 16px;">
           <circle cx="12" cy="12" r="10"></circle>
           <line x1="12" y1="8" x2="12" y2="12"></line>
           <line x1="12" y1="16" x2="12.01" y2="16"></line>
         </svg>
         <h2 id="no-data-title">No data available</h2>
-        <p id="no-data-description" style="margin-top: 8px; font-size: 14px; opacity: 0.6;">This project has no indexed documents. Select "+ Create New Project" to feed data.</p>
+        <p id="no-data-description" style="margin-top: 8px; font-size: 14px; opacity: 0.6;">This project has no indexed
+          documents. Click "Add Project" (+) to create a new project.</p>
         <button id="switch-to-feed-btn" class="primary-btn" style="margin-top: 16px;">Feed Data to This Project</button>
       </div>
     </main>
-    
+
     <!-- Feed Panel (inline, not modal) -->
     <div id="feed-panel" class="feed-panel" style="display: none;">
       <div class="feed-panel-content">
-        <!-- Example Selector -->
-        <div class="feed-toolbar">
-          <label for="example-select" class="toolbar-label">Template:</label>
-          <select id="example-select" class="example-select">
-            <option value="">-- Select a template --</option>
-          </select>
+        <!-- Feed Panel Header with Close Button -->
+        <div class="feed-panel-header">
+          <span class="feed-panel-title">Project Configuration</span>
+          <button id="close-feed-btn" class="close-feed-btn" title="Close">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
         </div>
 
         <!-- Interactive YAML Config -->
@@ -138,16 +134,16 @@
           </div>
           <div id="terminal-logs" class="terminal-logs"></div>
         </div>
-        
+
         <!-- Action Button -->
         <div class="feed-actions">
           <div class="resume-option">
             <label>
-              <input type="checkbox" id="resume-checkbox">
+              <input type="checkbox" id="resume-checkbox" checked>
               <span>Resume from existing data (update/continue)</span>
             </label>
           </div>
-          <button id="crawl-action-btn" class="primary-btn">Start Crawl Process</button>
+          <button id="crawl-action-btn" class="primary-btn">Start Indexing</button>
         </div>
       </div>
     </div>
@@ -166,6 +162,7 @@
       <div id="active-project-indicator" class="active-project-indicator"></div>
     </footer>
   </div>
+
   <div id="settings-modal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
@@ -194,7 +191,7 @@
   <script src="/static/marked.min.js"></script>
   <script src="/static/purify.min.js"></script>
   <script src="/static/js-yaml.min.js"></script>
-  <script src="/static/chat.js?v=17"></script>
+  <script src="/static/chat.js?v=30"></script>
 </body>
 
 </html>

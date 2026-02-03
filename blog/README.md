@@ -383,7 +383,7 @@ Want to create a RAG application from website content instead of local documents
    - `follow_subdomains`: Crawl subdomains (e.g., `blog.vespa.ai`)
    - `exclude`: List of URL patterns to skip (e.g., `/pricing`, `/sales/*`)
 5. Check **"Resume from existing data"** if updating an existing crawl
-6. Click **"Start Crawl Process"**
+6. Click **"Start Indexing"**
 
 **Web Mode Features:**
 - Automatic link discovery and crawling

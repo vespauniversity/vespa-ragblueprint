@@ -1,18 +1,16 @@
-name: doc
+name: doc_example
 mode: docs
 deploy_mode: cloud
 start_loc: ./dataset
 # Use existing Vespa app instead of generating new one
 vespa_app_path: ./vespa_cloud
-# Vespa Cloud configuration
+# Vespa Cloud configuration - set tenant at top level
+cloud_tenant: your-tenant  # required for cloud mode (env/CLI still override)
 vespa_cloud:
   # enpoint (TOKEN version not the MTLS)
   endpoint: https://your-vespa-cloud-endpoint-here.vespa-app.cloud
   # token: YOUR_TOKEN_HERE  # Or set VESPA_CLOUD_SECRET_TOKEN env var
   token: your-vespa-cloud-token-here
-  cloud_tenant: your-tenant  # required for cloud mode (env/CLI still override)
-  cloud_app: rag-blueprint
-  cloud_instance: default
 
 exclude:
   - "*.html"
@@ -43,4 +41,3 @@ llm_config:
   base_url: https://openrouter.ai/api/v1
   model: openai/gpt-4o-mini
   api_key: your-llm-api-key-here
-

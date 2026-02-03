@@ -224,16 +224,20 @@ def deploy_app_package(
     # Skip deployment unless NYRAG_VESPA_DEPLOY=1
     if os.getenv("NYRAG_VESPA_DEPLOY") != "1":
         logger.info("NYRAG_VESPA_DEPLOY != 1: Skipping Vespa deployment, using existing deployment")
-        vespa_url = os.getenv("VESPA_URL", "http://localhost")
-        vespa_port = int(os.getenv("VESPA_PORT", "8080"))
         
-        # Set environment variables if not already set
-        if not os.getenv("VESPA_URL"):
+        # Prefer URL from config if available, otherwise env/default
+        vespa_url = deploy_config.get_vespa_url()
+        vespa_port = deploy_config.get_vespa_port()
+        
+        # Log which one we are using
+        logger.success(f"Using existing Vespa at {vespa_url}:{vespa_port}")
+        
+        # Set environment variables so downstream components see the correct URL
+        if vespa_url:
             os.environ["VESPA_URL"] = vespa_url
-        if not os.getenv("VESPA_PORT"):
+        if vespa_port:
             os.environ["VESPA_PORT"] = str(vespa_port)
             
-        logger.success(f"Using existing Vespa at {vespa_url}:{vespa_port}")
         return DeployResult(
             success=True,
             vespa_url=vespa_url,

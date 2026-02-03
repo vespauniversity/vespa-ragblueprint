@@ -1,20 +1,18 @@
-name: web
+name: web_example
 mode: web
 deploy_mode: cloud
-start_loc: https://vespa.ai/
+start_loc: https://blog.vespa.ai/
 # Use existing Vespa app instead of generating new one
-vespa_app_path: ./vespa_app
+vespa_app_path: ./vespa_cloud
 feed_to_vespa: false  # Set to false to skip feeding, only crawl and save to JSONL
 
-# Vespa Cloud configuration
+# Vespa Cloud configuration - set tenant at top level
+cloud_tenant: your-tenant  # required for cloud mode (env/CLI still override)
 vespa_cloud:
   # enpoint (TOKEN version not the MTLS)
   endpoint: https://your-vespa-cloud-endpoint-here.vespa-app.cloud
   # token: YOUR_TOKEN_HERE  # Or set VESPA_CLOUD_SECRET_TOKEN env var
   token: your-vespa-cloud-token-here
-  cloud_tenant: your-tenant  # required for cloud mode (env/CLI still override)
-  cloud_app: rag-blueprint
-  cloud_instance: default
 
 exclude:
   - https://vespa.ai/pricing
@@ -77,4 +75,3 @@ llm_config:
 #   chunk_overlap: 50
 #   device: cpu                    # Device for embeddings: 'cpu' or 'cuda' (default: cpu)
 #   max_tokens: 8192
-

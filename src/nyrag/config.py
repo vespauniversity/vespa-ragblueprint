@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional
@@ -55,13 +57,14 @@ class LLMConfig(BaseModel):
 
 
 class VespaCloud(BaseModel):
-    """Configuration for Vespa Cloud deployment."""
+    """Configuration for Vespa Cloud deployment.
+
+    Note: Tenant, application, and instance are configured at the top level
+    of the config file (cloud_tenant) or via DeployConfig, not here.
+    """
 
     endpoint: Optional[str] = None
     token: Optional[str] = None
-    cloud_tenant: Optional[str] = None
-    cloud_app: Optional[str] = None
-    cloud_instance: Optional[str] = None
 
 
 class DeployConfig(BaseModel):
@@ -96,6 +99,8 @@ class DeployConfig(BaseModel):
     cloud_tenant: Optional[str] = None
     cloud_application: Optional[str] = None
     cloud_instance: Optional[str] = None
+    vespa_url: Optional[str] = None
+    vespa_cloud_token: Optional[str] = None  # Token from config file vespa_cloud.token
 
     def _build_cloud_url(self) -> Optional[str]:
         """Build Vespa Cloud URL from tenant, application, and instance."""
@@ -107,10 +112,13 @@ class DeployConfig(BaseModel):
         return None
 
     def get_vespa_url(self) -> str:
-        """Get Vespa URL from env var or default."""
+        """Get Vespa URL from config, env var or default."""
+        if self.vespa_url:
+            return self.vespa_url
         env_url = os.getenv("VESPA_URL")
         if env_url:
             return env_url
+            
         if self.deploy_mode == "cloud":
             if self.cloud_tenant:
                 cloud_url = self._build_cloud_url()
@@ -147,6 +155,9 @@ class DeployConfig(BaseModel):
     def get_configserver_url(self) -> str:
         """Get Vespa config server URL from env var or default."""
         return os.getenv("VESPA_CONFIGSERVER_URL", DEFAULT_VESPA_CONFIGSERVER_URL)
+
+
+
 
     def get_cloud_tenant(self) -> Optional[str]:
         """Get Vespa Cloud tenant from env var."""
@@ -231,16 +242,23 @@ class DeployConfig(BaseModel):
         """Get Vespa Cloud secret token for data-plane authentication.
 
         Priority:
-        1. Environment variable VESPA_CLOUD_SECRET_TOKEN
-        2. Vespa CLI config
+        1. Config file vespa_cloud.token (highest priority)
+        2. Environment variable VESPA_CLOUD_SECRET_TOKEN
+        3. Vespa CLI config
 
         Returns:
             The secret token if found, None otherwise.
         """
+        # 1. Check config file vespa_cloud.token first (highest priority)
+        if self.vespa_cloud_token:
+            return self.vespa_cloud_token
+        
+        # 2. Check environment variable
         env_value = os.getenv("VESPA_CLOUD_SECRET_TOKEN")
         if env_value:
             return env_value
-        # Vespa CLI config is checked in vespa_cli module
+        
+        # 3. Vespa CLI config is checked in vespa_cli module
         return None
 
     def is_cloud_mode(self) -> bool:
@@ -335,9 +353,9 @@ class Config(BaseModel):
 
     def get_output_path(self) -> Path:
         """Get the output directory path."""
-        # Use schema name format for consistency (lowercase alphanumeric only)
-        schema_name = self.get_schema_name()
-        return Path("output") / schema_name
+        # Use config name for folder name (e.g., 'doc_example')
+        # Schema name remains 'doc' for Vespa Cloud compatibility
+        return Path("output") / self.name
 
     def get_app_path(self) -> Path:
         """Get the app directory path for Vespa schema.
@@ -354,9 +372,9 @@ class Config(BaseModel):
         return self.vespa_app_path is not None
 
     def get_schema_name(self) -> str:
-        """Get the schema name - always returns 'doc' to match deployed schema."""
-        # Always use 'doc' schema which is the deployed schema in vespa_cloud
-        # This works for both web and docs modes
+        """Get the schema name - always returns 'doc' for Vespa Cloud compatibility."""
+        # Schema must be 'doc' to match deployed schema in Vespa Cloud
+        # This is separate from the output folder name which uses config name
         return "doc"
 
     def get_app_package_name(self) -> str:
@@ -402,18 +420,29 @@ class Config(BaseModel):
         if self.deploy_mode == "cloud" and self.cloud_tenant:
             cloud_application = self.get_app_package_name()
             cloud_instance = DEFAULT_VESPA_CLOUD_INSTANCE
+        
+        # Get token from vespa_cloud config if available
+        vespa_cloud_token = None
+        if self.vespa_cloud and self.vespa_cloud.token:
+            vespa_cloud_token = self.vespa_cloud.token
+        
         return DeployConfig(
             deploy_mode=self.deploy_mode,
             cloud_tenant=self.cloud_tenant,
             cloud_application=cloud_application,
             cloud_instance=cloud_instance,
+            vespa_cloud_token=vespa_cloud_token,
         )
 
     def get_vespa_url(self) -> str:
         """Get Vespa URL from deploy config (reads from env var)."""
+        if self.vespa_cloud and self.vespa_cloud.endpoint:
+            return self.vespa_cloud.endpoint
+            
         env_url = os.getenv("VESPA_URL")
         if env_url:
             return env_url
+            
         if self.vespa_url:
             return self.vespa_url
         return self.get_deploy_config().get_vespa_url()
@@ -472,7 +501,13 @@ def get_config_options(mode: str = "web") -> Dict[str, Any]:
             "label": "deploy_mode",
             "options": ["local", "cloud"],
         },
-        "cloud_tenant": {"type": "string", "label": "cloud_tenant", "optional": True},
+        "cloud_tenant": {
+            "type": "string",
+            "label": "cloud_tenant",
+            "optional": True,
+            "show_when": {"field": "vespa_cloud.token", "is_empty": True},
+            "help": "Required when using mTLS auth (no token). Used to locate certificates at ~/.vespa/{tenant}.{app}.{instance}/"
+        },
         "exclude": {"type": "list", "label": "exclude"},
         "vespa_cloud": {
             "type": "nested",
@@ -480,9 +515,6 @@ def get_config_options(mode: str = "web") -> Dict[str, Any]:
             "fields": {
                 "endpoint": {"type": "string", "label": "endpoint"},
                 "token": {"type": "string", "label": "token", "masked": True},
-                "cloud_tenant": {"type": "string", "label": "cloud_tenant"},
-                "cloud_app": {"type": "string", "label": "cloud_app"},
-                "cloud_instance": {"type": "string", "label": "cloud_instance"},
             },
         },
     }

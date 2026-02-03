@@ -248,6 +248,14 @@ def _persist_config_with_endpoint(
                     data["vespa_port"] = DEFAULT_VESPA_LOCAL_PORT
 
     with open(conf_path, "w", encoding="utf-8") as f:
+        # If vespa_cloud.endpoint is set, we don't need top-level vespa_url/port
+        # as the Config object will prioritize the cloud endpoint.
+        # This prevents "confusing" duplicate sources of truth in the file.
+        kc = data.get("vespa_cloud", {})
+        if kc and kc.get("endpoint"):
+            data.pop("vespa_url", None)
+            data.pop("vespa_port", None)
+
         yaml.safe_dump(data, f, sort_keys=False)
 
     logger.info(f"Config saved to {conf_path}")
