@@ -13,10 +13,12 @@ This repository contains a complete, working example of a RAG application that c
 - **Ready-to-use scripts**: Quick start scripts for cloud deployments
 
 **What you can do:**
+- Configure everything via web UI (no manual YAML editing)
 - Process PDFs, DOCX, websites, and other documents
 - Search your data using hybrid search (semantic + keyword)
 - Chat with your documents using LLM-powered answers
 - Deploy to production with Vespa Cloud (billions of docs, thousands of queries/sec)
+- Get instant validation when updating credentials (auto-test on blur)
 
 ## Quick Start (Cloud)
 
@@ -106,10 +108,13 @@ nyrag ui --cloud
 1. Open http://localhost:8000
 2. Select your project from the dropdown (e.g., "doc_example")
 3. Click the three-dot menu (⋮) → **"Edit Config"** to configure your credentials
-4. Update your Vespa Cloud endpoint, token, and LLM API key in the editor
-5. Click **"Start Indexing"** to process your documents
-6. Monitor processing progress in the terminal output panel
-7. Start chatting with your data!
+4. Update your Vespa Cloud endpoint, token, cloud_tenant, and LLM API key
+5. **Tab out of fields** → Auto-saves and tests connections (watch for ✓ or ✗ in header/terminal)
+6. Click **"Start Indexing"** to process your documents
+7. Monitor processing progress in the terminal output panel
+8. Start chatting with your data!
+
+**Pro tip**: Credentials are auto-validated when you tab out of fields, giving instant feedback on whether your connection works.
 
 ## How to Get Free LLM API Keys
 
@@ -339,49 +344,130 @@ schema doc {
 - Both BM25 and vector search enabled
 - Hamming distance for fast binary vector search
 
+## Key Features
+
+### UI-Based Configuration
+- Configure Vespa and LLM credentials directly in the web UI
+- No manual YAML file editing required
+- Interactive config editor with validation
+
+### Auto-Validation
+- **Real-time connection testing**: Edit credentials → Tab out → Instant validation
+- **Vespa connection**: Header shows `✓ Connected: X docs` or `✗ Error`
+- **LLM connection**: Terminal shows `✓ LLM connected: model-name` or error details
+- Auto-saves config and tests connections automatically
+
+### Powerful Search
+- **Hybrid Search**: Combines BM25 (keyword) + vector (semantic) search
+- **Binary Quantization**: 10x storage reduction with minimal quality loss
+- **Multi-Query RAG**: Generates multiple search queries for better recall
+
 ## Scripts
 
 ### `run_nyrag.sh`
 
 Quick start for Vespa Cloud:
-- Checks Vespa Cloud connection
-- Loads token from `doc_example.yml`
-- Starts NyRAG UI
+- Sets up environment variables
+- Starts NyRAG UI on http://localhost:8000
+- Auto-opens browser
+
 ### `process_docs.sh`
 
 Batch process documents without UI:
-- Reads config from `doc_example.yml`
+- Reads config from project settings
 - Processes all documents
 - Feeds to Vespa Cloud
 
 ## Troubleshooting
 
-### "Cannot connect to Vespa Cloud"
+### Vespa Connection Issues
 
-Check:
-1. Is your Vespa Cloud app deployed?
-2. Is the endpoint URL correct?
-3. Is the token valid?
-4. Run `vespa status` to verify connection
+**"✗ Cannot connect to Vespa" or "Connection error"**
 
-### "Virtual environment not found"
+Common causes:
+- **Invalid endpoint**: Use token endpoint format `https://[app-id].vespa-app.cloud`
+- **Invalid token**: Format should be `vespa_cloud_...` (check for spaces/line breaks)
+- **Missing cloud_tenant**: Set your Vespa Cloud tenant name in config
+- **App not deployed**: Verify deployment is complete in Vespa Cloud Console
 
-Run:
+**Test connection**: Edit credentials in UI, tab out, watch header for `✓ Connected` or `✗ Error`
+
+### LLM Connection Issues
+
+**"✗ LLM error: Invalid API key"**
+
+- Check API key format: OpenRouter (`sk-or-v1-...`), OpenAI (`sk-...`)
+- Verify key is active in provider dashboard
+- Make sure key is copied completely
+
+**"✗ LLM error: Model not found"**
+
+- Verify model name spelling (case-sensitive!)
+- OpenRouter: `meta-llama/llama-3.2-3b-instruct:free`
+- OpenAI: `gpt-4o-mini`
+
+**Test connection**: Edit LLM credentials, tab out, watch terminal for `✓ LLM connected`
+
+### Configuration Issues
+
+**Config not loading or YAML errors**
+
 ```bash
-uv sync
+# Check file exists
+ls output/doc_example/conf.yml
+
+# Verify permissions
+chmod 644 output/*/conf.yml
+
+# Restart NyRAG
+./stop_nyrag.sh && ./run_nyrag.sh
+```
+
+**YAML syntax**: Use 2 spaces for indentation, `key: value` format (space after colon)
+
+### Document Processing Issues
+
+**No documents indexed after feeding**
+
+- Check `start_loc` path is correct: `ls /your/path`
+- Verify file extensions match config (default: `.pdf`, `.docx`, `.txt`, `.md`)
+- Check file permissions: `chmod -R 644 /path/to/documents`
+- Review terminal logs for processing errors
+
+### Installation Issues
+
+**"Command not found: uv" or "nyrag"**
+
+```bash
+# Install uv (if missing)
+brew install uv  # macOS
+# or: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Activate virtual environment
 source .venv/bin/activate
+
+# Reinstall nyrag
+uv pip install -e .
 ```
 
-### "Out of memory" (local Docker)
+### Port Issues
 
-Vespa requires 8-12GB RAM. Check Docker settings:
+**"Port 8000 already in use"**
+
 ```bash
-docker stats
+# Kill process on port 8000
+lsof -ti:8000 | xargs kill -9
+
+# Or use different port
+nyrag ui --port 8080
 ```
 
-### Embeddings not working
+### Getting More Help
 
-Make sure you're using the modified NyRAG from this repo, not `pip install nyrag`.
+- **Full troubleshooting guide**: See [blog/README.md](blog/README.md#troubleshooting)
+- **Debug logging**: `export NYRAG_LOG_LEVEL=DEBUG`
+- **Community**: Join [Vespa Slack](http://slack.vespa.ai/)
+- **Issues**: [GitHub Issues](https://github.com/vespauniversity/vespa-ragblueprint/issues)
 
 ## Learn More
 
