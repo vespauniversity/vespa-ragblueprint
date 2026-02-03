@@ -199,6 +199,9 @@ echo ""
 
 # Test connection to Vespa Cloud endpoint with token
 echo "Testing connection to Vespa Cloud..."
+echo "  Endpoint: $TOKEN_ENDPOINT"
+echo "  Testing with HTTP request..."
+
 CONNECTION_TEST=$(python3 -c "
 import urllib.request
 import json
@@ -209,21 +212,32 @@ token = '${VESPA_CLOUD_SECRET_TOKEN}'
 
 # Simple query to test connection
 url = f'{endpoint}/search/'
+
+print(f'Connecting to: {url}', file=sys.stderr)
+
 data = json.dumps({'yql': 'select * from sources * where true', 'hits': 0}).encode('utf-8')
 headers = {
     'Content-Type': 'application/json',
-    'Authorization': f'Bearer {token}'
+    'Authorization': f'Bearer {token[:20]}...'  # Show only first part of token
 }
 
 try:
-    req = urllib.request.Request(url, data=data, headers=headers, method='POST')
-    with urllib.request.urlopen(req, timeout=10) as response:
+    req = urllib.request.Request(url, data=data, headers={
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {token}'
+    }, method='POST')
+
+    print('Sending request...', file=sys.stderr)
+
+    with urllib.request.urlopen(req, timeout=15) as response:
+        print(f'Response status: {response.status}', file=sys.stderr)
         if response.status in [200, 400]:  # 200 = success, 400 = query error but connection works
             print('OK')
         else:
             print(f'ERROR_HTTP_{response.status}')
             sys.exit(1)
 except urllib.error.HTTPError as e:
+    print(f'HTTP Error: {e.code}', file=sys.stderr)
     if e.code == 401:
         print('ERROR_AUTH')
     elif e.code == 404:
@@ -232,9 +246,11 @@ except urllib.error.HTTPError as e:
         print(f'ERROR_HTTP_{e.code}')
     sys.exit(1)
 except urllib.error.URLError as e:
+    print(f'URL Error: {e.reason}', file=sys.stderr)
     print(f'ERROR_NETWORK: {e.reason}')
     sys.exit(1)
 except Exception as e:
+    print(f'Exception: {type(e).__name__}: {e}', file=sys.stderr)
     print(f'ERROR_UNKNOWN: {e}')
     sys.exit(1)
 " 2>&1)
