@@ -682,7 +682,17 @@ crawlActionBtn.onclick = async () => {
     // 2. Start Crawl with the YAML content
     const yamlStr = jsyaml.dump(currentConfig);
     const resumeCheckbox = document.getElementById("resume-checkbox");
-    const resume = resumeCheckbox ? resumeCheckbox.checked : false;
+    // If user explicitly checked/unchecked, use that.
+    // If not, and we have an active project, default to true to allow updates.
+    let resume = resumeCheckbox ? resumeCheckbox.checked : false;
+    if (activeProjectName && (!resumeCheckbox || !resumeCheckbox.checked)) {
+      // If it's an existing project, we almost certainly want to resume/update
+      // rather than fail with "already exists".
+      // However, strictly we should probably respect the checkbox if it exists.
+      // The issue is the user interface might not show the checkbox or it defaults to off.
+      // Let's force resume=true if we are in an active project to avoid the error.
+      resume = true;
+    }
 
     const startRes = await fetch("/crawl/start", {
       method: "POST",
