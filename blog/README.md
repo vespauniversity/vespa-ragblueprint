@@ -14,7 +14,7 @@ In this tutorial, you'll build a complete RAG (Retrieval-Augmented Generation) a
 
 **What you'll use:**
 - **Vespa RAG Blueprint**: Pre-configured Vespa application with hybrid search
-- **Modified NyRAG**: Handles document processing, embeddings, and chat UI
+- **NyRAG**: Handles document processing, embeddings, and chat UI
 - **Your documents**: PDFs, websites, or any text content
 
 **Time required:** ~15 minutes (excluding data processing time)
@@ -107,11 +107,11 @@ You'll use both in Step 3 to connect NyRAG to Vespa, and optionally for direct q
 
 ---
 
-## Step 2: Install Modified NyRAG
+## Step 2: Install NyRAG
 
 
 
-Now install the modified NyRAG tool from the vespa-ragblueprint repository:
+Now install the NyRAG tool from the vespa-ragblueprint repository:
 
 ```bash
 # Clone the repository
@@ -163,7 +163,7 @@ NyRAG is a simple tool that handles:
 - Feeding data to Vespa
 - Providing a chat UI with LLM-powered answers
 
-This modified version is optimized to work with the Vespa RAG Blueprint schema.
+This version is optimized to work with the Vespa RAG Blueprint schema.
 
 **Tip:** The repository includes a `run_nyrag.sh` script that makes it easy to start NyRAG with your Vespa Cloud deployment!
 
@@ -561,7 +561,7 @@ schema doc {
 4. **Vespa** stores everything and performs hybrid search
 5. **NyRAG** uses an LLM to generate answers from retrieved chunks
 
-**Note:** While Vespa CAN generate embeddings and call LLMs directly (via HuggingFace embedder and OpenAI components in `services.xml`), this tutorial uses NyRAG to handle those tasks for simplicity. The modified NyRAG is optimized for this workflow.
+**Note:** While Vespa can generate embeddings and call LLMs directly (via HuggingFace embedder and OpenAI components in `services.xml`), this tutorial uses NyRAG to handle those tasks for simplicity. This NyRAG version is optimized for this workflow.
 
 ---
 
@@ -570,7 +570,7 @@ schema doc {
 **Congratulations!** You've built a production-ready RAG application in 4 simple steps:
 
 1. Deployed Vespa RAG Blueprint to the cloud
-2. Installed the modified NyRAG tool
+2. Installed the NyRAG tool
 3. Processed your documents (PDFs, websites, etc.)
 4. Created a chat interface to query your data
 
