@@ -197,99 +197,86 @@ fi
 echo "✅ Configuration validated successfully"
 echo ""
 
-# Test connection to Vespa Cloud endpoint with token
+# Test connection to Vespa Cloud endpoint with token (with timeout)
 echo "Testing connection to Vespa Cloud..."
 echo "  Endpoint: $TOKEN_ENDPOINT"
-echo "  Testing with HTTP request..."
 
-CONNECTION_TEST=$(python3 -c "
+# Run connection test with timeout command (max 20 seconds)
+CONNECTION_TEST=$(timeout 20 python3 << 'PYTHON_SCRIPT'
 import urllib.request
 import json
 import sys
+import os
 
-endpoint = '${TOKEN_ENDPOINT}'.rstrip('/')
-token = '${VESPA_CLOUD_SECRET_TOKEN}'
+endpoint = os.environ.get('TOKEN_ENDPOINT', '').rstrip('/')
+token = os.environ.get('VESPA_CLOUD_SECRET_TOKEN', '')
 
-# Simple query to test connection
-url = f'{endpoint}/search/'
+if not endpoint or not token:
+    print("ERROR_MISSING_CONFIG")
+    sys.exit(1)
 
-print(f'Connecting to: {url}', file=sys.stderr)
-
-data = json.dumps({'yql': 'select * from sources * where true', 'hits': 0}).encode('utf-8')
-headers = {
-    'Content-Type': 'application/json',
-    'Authorization': f'Bearer {token[:20]}...'  # Show only first part of token
-}
+url = f"{endpoint}/search/"
+data = json.dumps({"yql": "select * from sources * where true", "hits": 0}).encode("utf-8")
 
 try:
     req = urllib.request.Request(url, data=data, headers={
-        'Content-Type': 'application/json',
-        'Authorization': f'Bearer {token}'
-    }, method='POST')
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}"
+    }, method="POST")
 
-    print('Sending request...', file=sys.stderr)
-
-    with urllib.request.urlopen(req, timeout=15) as response:
-        print(f'Response status: {response.status}', file=sys.stderr)
-        if response.status in [200, 400]:  # 200 = success, 400 = query error but connection works
-            print('OK')
+    with urllib.request.urlopen(req, timeout=10) as response:
+        if response.status in [200, 400]:
+            print("OK")
         else:
-            print(f'ERROR_HTTP_{response.status}')
-            sys.exit(1)
+            print(f"ERROR_HTTP_{response.status}")
 except urllib.error.HTTPError as e:
-    print(f'HTTP Error: {e.code}', file=sys.stderr)
     if e.code == 401:
-        print('ERROR_AUTH')
+        print("ERROR_AUTH")
     elif e.code == 404:
-        print('ERROR_NOT_FOUND')
+        print("ERROR_NOT_FOUND")
     else:
-        print(f'ERROR_HTTP_{e.code}')
-    sys.exit(1)
+        print(f"ERROR_HTTP_{e.code}")
 except urllib.error.URLError as e:
-    print(f'URL Error: {e.reason}', file=sys.stderr)
-    print(f'ERROR_NETWORK: {e.reason}')
-    sys.exit(1)
+    print(f"ERROR_NETWORK: {e.reason}")
 except Exception as e:
-    print(f'Exception: {type(e).__name__}: {e}', file=sys.stderr)
-    print(f'ERROR_UNKNOWN: {e}')
-    sys.exit(1)
-" 2>&1)
+    print(f"ERROR_UNKNOWN: {e}")
+PYTHON_SCRIPT
+)
 
-if [ "$CONNECTION_TEST" = "OK" ]; then
+# Check exit code of timeout command
+TIMEOUT_EXIT=$?
+
+if [ $TIMEOUT_EXIT -eq 124 ]; then
+    echo "⚠️  Connection test timeout (>20s)"
+    echo "   Continuing anyway - you can check connection in the UI"
+    echo ""
+elif [ "$CONNECTION_TEST" = "OK" ]; then
     echo "✅ Successfully connected to Vespa Cloud"
-    echo "   Endpoint: $TOKEN_ENDPOINT"
     echo ""
 elif [ "$CONNECTION_TEST" = "ERROR_AUTH" ]; then
     echo "❌ Authentication failed - Invalid token"
-    echo "   Endpoint: $TOKEN_ENDPOINT"
     echo ""
     echo "Please check your token in $CONFIG_FILE"
-    echo "Get a valid token from: https://console.vespa-cloud.com/"
     exit 1
 elif [ "$CONNECTION_TEST" = "ERROR_NOT_FOUND" ]; then
     echo "❌ Endpoint not found (404)"
-    echo "   Endpoint: $TOKEN_ENDPOINT"
     echo ""
     echo "Please check your endpoint in $CONFIG_FILE"
-    echo "Verify your application is deployed in Vespa Cloud console"
     exit 1
 elif [[ "$CONNECTION_TEST" == ERROR_NETWORK* ]]; then
     echo "❌ Network error - Cannot reach Vespa Cloud"
-    echo "   Endpoint: $TOKEN_ENDPOINT"
     echo "   Error: $CONNECTION_TEST"
     echo ""
-    echo "Please check:"
-    echo "  1. Your internet connection"
-    echo "  2. The endpoint URL is correct"
-    echo "  3. Vespa Cloud is accessible"
+    echo "Please check your endpoint and internet connection"
     exit 1
+elif [ -z "$CONNECTION_TEST" ]; then
+    echo "⚠️  Connection test failed to complete"
+    echo "   Continuing anyway - you can check connection in the UI"
+    echo ""
 else
-    echo "❌ Connection test failed"
-    echo "   Endpoint: $TOKEN_ENDPOINT"
-    echo "   Error: $CONNECTION_TEST"
+    echo "⚠️  Connection test returned: $CONNECTION_TEST"
+    echo "   Continuing anyway - you can check connection in the UI"
     echo ""
-    echo "Please check your configuration in $CONFIG_FILE"
-    exit 1
 fi
 
 # Check if existing vespa_app exists
