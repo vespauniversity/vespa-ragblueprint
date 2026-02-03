@@ -547,12 +547,20 @@ async def get_config(project_name: Optional[str] = None) -> Dict[str, str]:
 @app.post("/config")
 async def save_config(config: ConfigContent):
     """Save content to the project configuration file."""
-    global active_project
+    global active_project, settings, vespa_app
     config_path = _resolve_config_path(config_yaml=config.content, active_project=active_project)
     config_path.parent.mkdir(parents=True, exist_ok=True)
     with open(config_path, "w") as f:
         f.write(config.content)
     active_project = config_path.parent.name
+
+    # Reload settings and vespa client with new config
+    try:
+        settings = load_project_settings(active_project)
+        vespa_app = _create_vespa_client(settings)
+        logger.info(f"Configuration saved and client updated for project {active_project}")
+    except Exception as e:
+        logger.warning(f"Configuration saved but failed to reload client: {e}")
 
     return {"status": "saved"}
 
