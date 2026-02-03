@@ -503,19 +503,19 @@ async def stats() -> Dict[str, Any]:
 
         # Categorize the error for better user feedback
         if "NameResolutionError" in error_msg or "Failed to resolve" in error_msg:
-            connection_error = "Cannot resolve endpoint - Check your endpoint URL"
+            connection_error = "Cannot resolve endpoint: Check your endpoint URL"
         elif "Connection refused" in error_msg:
-            connection_error = "Connection refused - Vespa may not be running"
+            connection_error = "Connection refused: Vespa may not be running"
         elif "Timeout" in error_msg or "timed out" in error_msg:
-            connection_error = "Connection timeout - Vespa is not responding"
+            connection_error = "Connection timeout: Vespa is not responding"
         elif "401" in error_msg or "Unauthorized" in error_msg:
-            connection_error = "Authentication failed - Check your token"
+            connection_error = "Authentication failed: Check your token"
         elif "403" in error_msg or "Forbidden" in error_msg:
-            connection_error = "Access forbidden - Check your credentials"
+            connection_error = "Access forbidden: Check your credentials"
         elif "404" in error_msg:
-            connection_error = "Endpoint not found - Check your deployment"
+            connection_error = "Endpoint not found: Check your deployment"
         else:
-            connection_error = "Connection error - Cannot reach Vespa"
+            connection_error = "Connection error: Cannot reach Vespa"
 
     # Note: The new schema uses Vespa's built-in chunking (chunk fixed-length 1024)
     # and doesn't have a chunk_count field. Chunk count is not available with this schema.
@@ -530,6 +530,91 @@ async def stats() -> Dict[str, Any]:
         "has_data": doc_count is not None and doc_count > 0,
         "connection_error": connection_error,
     }
+
+
+@app.get("/test-llm")
+async def test_llm_connection() -> Dict[str, Any]:
+    """Test LLM connection and return status."""
+    try:
+        # Get LLM client with current config
+        client = _get_llm_client()
+
+        # Get model ID
+        current_settings = settings
+        if active_project:
+            try:
+                current_settings = load_project_settings(active_project)
+            except Exception:
+                pass
+
+        model_id = (current_settings.get("llm_model") or "").strip()
+        base_url = current_settings.get("llm_base_url") or DEFAULT_LLM_BASE_URL
+
+        if not model_id:
+            return {
+                "success": False,
+                "error": "Model not configured",
+                "model": None,
+                "base_url": base_url,
+            }
+
+        # Test with a simple completion request (minimal tokens)
+        try:
+            response = await client.chat.completions.create(
+                model=model_id,
+                messages=[{"role": "user", "content": "Hi"}],
+                max_tokens=5,
+                timeout=10.0,
+            )
+
+            return {
+                "success": True,
+                "error": None,
+                "model": model_id,
+                "base_url": base_url,
+                "response_id": response.id if hasattr(response, 'id') else None,
+            }
+
+        except Exception as e:
+            error_msg = str(e)
+
+            # Categorize errors for better feedback
+            if "401" in error_msg or "Unauthorized" in error_msg:
+                error = "Invalid API key"
+            elif "403" in error_msg or "Forbidden" in error_msg:
+                error = "API key lacks permissions"
+            elif "404" in error_msg or "not found" in error_msg.lower():
+                error = f"Model '{model_id}' not found"
+            elif "timeout" in error_msg.lower():
+                error = "Connection timeout"
+            elif "connection" in error_msg.lower():
+                error = "Cannot connect to LLM API"
+            else:
+                error = f"LLM error: {error_msg[:100]}"
+
+            return {
+                "success": False,
+                "error": error,
+                "model": model_id,
+                "base_url": base_url,
+            }
+
+    except HTTPException as e:
+        # Handle missing API key or config errors
+        return {
+            "success": False,
+            "error": e.detail,
+            "model": None,
+            "base_url": None,
+        }
+    except Exception as e:
+        logger.error(f"LLM test error: {e}")
+        return {
+            "success": False,
+            "error": str(e)[:100],
+            "model": None,
+            "base_url": None,
+        }
 
 
 class ConfigContent(BaseModel):

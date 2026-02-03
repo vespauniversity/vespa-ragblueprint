@@ -48,7 +48,13 @@ pip install -e .
 
 ### 3. Configure
 
-Create or edit `doc_example.yml`:
+Configuration is done through the NyRAG web UI (see step 5 below). You'll need:
+
+- **Vespa Cloud endpoint**: From your Vespa Cloud deployment (e.g., `https://your-app.vespa-cloud.com`)
+- **Vespa Cloud token**: Authentication token from Vespa Cloud Console
+- **LLM API key**: From your chosen provider (OpenRouter, OpenAI, Groq, or Ollama)
+
+**Example configuration structure** (configured in the UI):
 
 ```yaml
 name: doc
@@ -56,15 +62,12 @@ mode: docs
 deploy_mode: cloud
 start_loc: /path/to/your/documents/
 
-# Use the RAG Blueprint schema
 vespa_app_path: ./vespa_cloud
 
-# Your Vespa Cloud credentials
 vespa_cloud:
   endpoint: https://your-app.vespa-cloud.com
   token: vespa_cloud_YOUR_TOKEN_HERE
 
-# Document settings
 doc_params:
   recursive: true
   file_extensions:
@@ -73,7 +76,6 @@ doc_params:
     - .txt
     - .md
 
-# LLM configuration (optional)
 llm_config:
   base_url: https://openrouter.ai/api/v1
   model: meta-llama/llama-3.2-3b-instruct:free
@@ -102,9 +104,12 @@ nyrag ui --cloud
 ### 5. Process Documents & Chat
 
 1. Open http://localhost:8000
-2. Upload your documents or configure a website to crawl
-3. Monitor processing progress
-4. Start chatting with your data!
+2. Select your project from the dropdown (e.g., "doc_example")
+3. Click the three-dot menu (⋮) → **"Edit Config"** to configure your credentials
+4. Update your Vespa Cloud endpoint, token, and LLM API key in the editor
+5. Click **"Start Indexing"** to process your documents
+6. Monitor processing progress in the terminal output panel
+7. Start chatting with your data!
 
 ## How to Get Free LLM API Keys
 
@@ -203,9 +208,11 @@ User (chat interface)
 
 ## Configuration Options
 
+Configure these settings in the NyRAG web UI using the **"Edit Config"** button (three-dot menu → Edit Config).
+
 ### Document Mode
 
-Process local files:
+Process local files by setting `mode: docs`:
 
 ```yaml
 name: doc
@@ -226,7 +233,7 @@ doc_params:
 
 ### Web Crawling Mode
 
-Crawl websites:
+Crawl websites by setting `mode: web`:
 
 ```yaml
 name: web
@@ -271,18 +278,25 @@ for hit in response.hits:
     print(f"Chunks: {hit['fields']['chunks'][:2]}")
 ```
 
-### Via Vespa CLI
+### Via Vespa CLI (Optional - Advanced)
+
+For direct querying without the UI:
 
 ```bash
-# Go to vespa cloud application directory
-cd vespa_cloud
+# Install Vespa CLI (if not already installed)
+brew install vespa-cli  # macOS
+# Or download from: https://github.com/vespa-engine/vespa/releases
 
+# Configure Vespa CLI
 vespa config set target cloud
-vespa config set application your-tenant.your-app
+vespa config set application your-tenant.your-app.your-instance
 vespa auth login
 
+# Query
 vespa query 'query=What is RAG?'
 ```
+
+**Note:** The NyRAG UI is the recommended way to query your data, as it includes LLM-powered answer generation. Use the CLI for debugging, testing, or automation.
 
 ## Advanced: The Schema
 

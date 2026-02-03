@@ -504,9 +504,7 @@ def get_config_options(mode: str = "web") -> Dict[str, Any]:
         "cloud_tenant": {
             "type": "string",
             "label": "cloud_tenant",
-            "optional": True,
-            "show_when": {"field": "vespa_cloud.token", "is_empty": True},
-            "help": "Required when using mTLS auth (no token). Used to locate certificates at ~/.vespa/{tenant}.{app}.{instance}/"
+            "help": "Your Vespa Cloud tenant name (e.g., 'mytenant'). Required for cloud deployments."
         },
         "exclude": {"type": "list", "label": "exclude"},
         "vespa_cloud": {

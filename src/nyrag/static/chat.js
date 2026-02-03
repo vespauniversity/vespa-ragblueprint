@@ -431,6 +431,124 @@ function renderConfigEditor() {
         // Re-check conditional field visibility when any field changes
         updateConditionalVisibility();
       };
+
+      // Auto-save and refresh stats on blur for credential fields
+      input.onblur = async (e) => {
+        const isVespaCredential = (
+          (key === 'endpoint' || key === 'token') && parentObj === currentConfig.vespa_cloud
+        ) || (key === 'cloud_tenant' && parentObj === currentConfig);
+
+        const isLLMCredential = (
+          (key === 'api_key' || key === 'base_url' || key === 'model') &&
+          parentObj === currentConfig.llm_config
+        );
+
+        if ((isVespaCredential || isLLMCredential) && activeProjectName) {
+          // Debounce to avoid rapid-fire saves if user tabs through fields
+          if (window.credentialSaveTimeout) {
+            clearTimeout(window.credentialSaveTimeout);
+          }
+
+          window.credentialSaveTimeout = setTimeout(async () => {
+            try {
+              // Show saving state in terminal (not header)
+              if (terminalStatus) {
+                terminalStatus.textContent = "💾 Saving config...";
+                terminalStatus.style.color = "#6b7280";
+              }
+
+              // Auto-save config
+              const yamlStr = jsyaml.dump(currentConfig);
+              const saveRes = await fetch("/config", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ content: yamlStr })
+              });
+
+              if (saveRes.ok) {
+                // Test connections based on what changed
+                let vespaOk = true;
+                let llmOk = true;
+
+                if (isVespaCredential) {
+                  // Test Vespa connection
+                  if (terminalStatus) {
+                    terminalStatus.textContent = "🔄 Testing Vespa...";
+                    terminalStatus.style.color = "#6b7280";
+                  }
+                  await fetchStats();
+                  // fetchStats will update statsEl (header)
+                }
+
+                if (isLLMCredential) {
+                  // Test LLM connection
+                  if (terminalStatus) {
+                    terminalStatus.textContent = "🔄 Testing LLM...";
+                    terminalStatus.style.color = "#6b7280";
+                  }
+
+                  try {
+                    const llmRes = await fetch("/test-llm");
+                    const llmData = await llmRes.json();
+
+                    if (llmData.success) {
+                      if (terminalStatus) {
+                        terminalStatus.textContent = `✓ LLM connected: ${llmData.model}`;
+                        terminalStatus.style.color = "#10b981";
+                      }
+                    } else {
+                      llmOk = false;
+                      if (terminalStatus) {
+                        terminalStatus.textContent = `✗ LLM error: ${llmData.error}`;
+                        terminalStatus.style.color = "#ef4444";
+                      }
+                    }
+                  } catch (err) {
+                    llmOk = false;
+                    if (terminalStatus) {
+                      terminalStatus.textContent = "✗ LLM test failed";
+                      terminalStatus.style.color = "#ef4444";
+                    }
+                  }
+
+                  // If only LLM changed, refresh Vespa stats too (don't leave it stale)
+                  if (!isVespaCredential) {
+                    await fetchStats();
+                  }
+                }
+
+                // Show overall success feedback
+                if (vespaOk && llmOk && terminalStatus) {
+                  setTimeout(() => {
+                    terminalStatus.textContent = "✓ Config saved & validated";
+                    terminalStatus.style.color = "#10b981";
+                    setTimeout(() => {
+                      terminalStatus.textContent = "Ready";
+                      terminalStatus.style.color = "var(--accent-color)";
+                    }, 2000);
+                  }, 500);
+                }
+              } else {
+                // Save failed
+                if (terminalStatus) {
+                  terminalStatus.textContent = "✗ Failed to save config";
+                  terminalStatus.style.color = "#ef4444";
+                }
+                // Refresh stats anyway to show current state
+                await fetchStats();
+              }
+            } catch (err) {
+              console.error("Failed to auto-save config:", err);
+              if (terminalStatus) {
+                terminalStatus.textContent = "⚠️ Save error";
+                terminalStatus.style.color = "#ef4444";
+              }
+              // Refresh stats to show current state
+              await fetchStats();
+            }
+          }, 300); // Small delay to batch rapid tab-throughs
+        }
+      };
       line.appendChild(input);
     } else if (schemaItem.type === 'boolean') {
       const select = document.createElement('select');
@@ -696,7 +814,7 @@ window.onclick = (e) => {
 
 function updateCrawlButton(isRunning) {
   if (isRunning) {
-    crawlActionBtn.textContent = "Stop Crawl";
+    crawlActionBtn.textContent = "Stop Indexing";
     crawlActionBtn.classList.remove("primary-btn");
     crawlActionBtn.classList.add("secondary-btn");
     crawlActionBtn.style.backgroundColor = "#ef4444"; // Make it red for stop
@@ -818,7 +936,7 @@ crawlActionBtn.onclick = async () => {
     const resumeCheckbox = document.getElementById("resume-checkbox");
     // If user explicitly checked/unchecked, use that.
     // If not, and we have an active project, default to true to allow updates.
-    let resume = resumeCheckbox ? resumeCheckbox.checked : false;
+    let resume = true; // Always resume/update (checkbox hidden in UI)
     if (activeProjectName && (!resumeCheckbox || !resumeCheckbox.checked)) {
       // If it's an existing project, we almost certainly want to resume/update
       // rather than fail with "already exists".
@@ -1166,24 +1284,26 @@ async function fetchStats() {
 
     // Check for connection errors first
     if (data.connection_error) {
-      statsEl.textContent = `⚠️ ${data.connection_error}`;
+      statsEl.textContent = `✗ ${data.connection_error}`;
       statsEl.style.color = "#ef4444"; // Red color for errors
       statsEl.title = "Cannot connect to Vespa - check your configuration";
     } else if (data.documents) {
-      statsEl.textContent = `${data.documents} documents indexed`;
-      statsEl.style.color = ""; // Reset to default
-      statsEl.title = "";
+      statsEl.textContent = `✓ Connected: ${data.documents} docs`;
+      statsEl.style.color = "#10b981"; // Green color for success
+      statsEl.title = `${data.documents} documents indexed in Vespa`;
     } else {
-      statsEl.textContent = "No documents indexed";
-      statsEl.style.color = ""; // Reset to default
-      statsEl.title = "";
+      statsEl.textContent = "✓ Connected: 0 docs";
+      statsEl.style.color = "#10b981"; // Green - connected but empty
+      statsEl.title = "Connected to Vespa - no documents indexed yet";
     }
 
     updateChatInputState();
 
   } catch (e) {
     console.error("Failed to fetch stats", e);
-    statsEl.textContent = "Error loading stats";
+    statsEl.textContent = "✗ Connection error";
+    statsEl.style.color = "#ef4444";
+    statsEl.title = "Failed to fetch stats from server";
   } finally {
     hideLoading();
   }
@@ -1267,14 +1387,17 @@ async function loadConfigIntoEditor(configName) {
 
     // Update stats display
     if (stats.connection_error) {
-      statsEl.textContent = `⚠️ ${stats.connection_error}`;
+      statsEl.textContent = `✗ ${stats.connection_error}`;
       statsEl.style.color = "#ef4444";
+      statsEl.title = "Cannot connect to Vespa - check your configuration";
     } else if (stats.documents) {
-      statsEl.textContent = `${stats.documents} documents indexed`;
-      statsEl.style.color = "";
+      statsEl.textContent = `✓ Connected: ${stats.documents} docs`;
+      statsEl.style.color = "#10b981";
+      statsEl.title = `${stats.documents} documents indexed in Vespa`;
     } else {
-      statsEl.textContent = "No documents indexed";
-      statsEl.style.color = "";
+      statsEl.textContent = "✓ Connected: 0 docs";
+      statsEl.style.color = "#10b981";
+      statsEl.title = "Connected to Vespa - no documents indexed yet";
     }
 
     if (hasData) {

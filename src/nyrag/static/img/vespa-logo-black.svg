@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 55 39">
+    <defs>
+        <style>
+            .cls-1 {
+                clip-path: url(#clippath);
+            }
+            .cls-2 {
+                fill: none;
+            }
+            .cls-2,
+            .cls-3 {
+                stroke-width: 0px;
+            }
+        </style>
+        <clipPath id="clippath">
+            <rect class="cls-2" width="165" height="39" />
+        </clipPath>
+    </defs>
+    <g id="Layer_1-2">
+        <g class="cls-1">
+            <g id="logo">
+
+                <g id="Group_2">
+                    <path id="Vector_6" class="cls-3" d="m10.6,25.6h33.4l-10.6,10.6H0v-15.1l10.6-10.6v15.1Z" />
+                    <path id="Vector_7" class="cls-3" d="m54.7,0v15.1l-10.7,10.5v-15.1H10.6L21.3,0h33.4Z" />
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

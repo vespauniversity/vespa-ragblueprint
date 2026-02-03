@@ -2,7 +2,7 @@
 
 *From Zero to RAG: A Simple Step-by-Step Tutorial*
 
-![nyrag_ui](img/nyrag_11.png)
+![nyrag_ui](img/nyrag_ui.png)
 
 In this tutorial, you'll build a complete RAG (Retrieval-Augmented Generation) application in just 4 steps:
 
@@ -20,10 +20,7 @@ In this tutorial, you'll build a complete RAG (Retrieval-Augmented Generation) a
 **Time required:** ~15 minutes (excluding data processing time)
 
 **The 4-Step Process:**
-```
-1. Deploy Vespa       →  2. Install NyRAG    →  3. Process Docs    →  4. Chat!
-   (via Cloud UI)        (from GitHub)          (PDFs, websites)      (Ask questions)
-```
+![Steps Illustration](img/steps_illustration.png)
 
 ## What is RAG?
 
@@ -109,8 +106,6 @@ You'll use both in Step 3 to connect NyRAG to Vespa, and optionally for direct q
 
 ## Step 2: Install NyRAG
 
-
-
 Now install the NyRAG tool from the vespa-ragblueprint repository:
 
 ```bash
@@ -118,28 +113,7 @@ Now install the NyRAG tool from the vespa-ragblueprint repository:
 git clone https://github.com/vespauniversity/vespa-ragblueprint
 cd vespa-ragblueprint
 
-# Install vespa cli if missing
-
-# macOS
-brew install vespa-cli
-
-# Or Linux, macOS, Windows
-# Download binary from GitHub releases
-# Visit: https://github.com/vespa-engine/vespa/releases
-# Place the extracted binary in an executable path directory so it can be called from anywhere
-
-# Verify vespa installation
-vespa version
-
-# Set Vespa target to cloud
-vespa config set target cloud
-
-# Set Vespa application config
-# e.g. vespa config set application mytenant.rag-blueprint.default
-vespa config set application <tenant-name>.<application-name>.<instance-name>
-
-# Install uv if missing (Fast, modern Python package manager)
-
+# Install uv (Fast, modern Python package manager)
 # macOS
 brew install uv
 
@@ -155,7 +129,7 @@ uv --version
 uv sync
 source .venv/bin/activate
 
-# Install nyrag localy
+# Install nyrag locally
 uv pip install -e .
 
 # Verify nyrag installation
@@ -176,76 +150,18 @@ This version is optimized to work with the Vespa RAG Blueprint schema.
 
 ---
 
-## Step 3: Configure and Process Your Documents
+## Step 3: Configure Your Project and Process Documents
 
-Update a configuration file to tell NyRAG about your data source and Vespa endpoint:
+Now you'll configure your project using the web UI to connect to your Vespa Cloud deployment and set up document processing.
 
-**3.1 Update `doc_example.yml` file in config directory of the project:**
+**3.1 Get a free LLM API key:**
 
-This file will be used as the configuration for the NyRAG app. You will upload it in the UI in a later step.
-
-**For processing local documents (PDFs, DOCX, etc.):**
-```yaml
-name: doc
-mode: docs
-deploy_mode: cloud
-start_loc: /path/to/your/documents/
-
-# Use existing Vespa app instead of generating new one
-vespa_app_path: /path/to/your/vespa-ragblueprint/vespa_cloud
-
-# Your Vespa Cloud credentials from Step 1
-vespa_cloud:
-  endpoint: https://your-app.vespa-cloud.com  # Replace with your endpoint
-  token: your-vespa-cloud-token               # Replace with your token
-
-# Document processing settings
-doc_params:
-  recursive: true
-  file_extensions:
-    - .pdf
-    - .docx
-    - .txt
-    - .md
-
-# LLM configuration (optional - for answer generation)
-llm_config:
-  base_url: https://openrouter.ai/api/v1
-  model: meta-llama/llama-3.2-3b-instruct:free  # Free model
-  api_key: your-llm-api-key  # See below for free options
-```
-Then, place your document files in the directory specified by `start_loc`, or simply use the existing `./dataset` directory. Additionally, set `vespa_app_path` to `./vespa_cloud` to use the existing Vespa application instead of generating a new one.
-
-<!--
-**For crawling websites:**
-```yaml
-name: web 
-mode: web
-deploy_mode: cloud
-start_loc: https://example.com/
-
-vespa_cloud:
-  endpoint: https://your-app.vespa-cloud.com
-  token: your-vespa-cloud-token
-
-crawl_params:
-  respect_robots_txt: true
-  follow_subdomains: true
-
-llm_config:
-  base_url: https://openrouter.ai/api/v1
-  model: meta-llama/llama-3.2-3b-instruct:free  # Use free model from above
-  api_key: your-llm-api-key
-```
--->
-
-
-**How to get a free LLM API key:**
+Before configuring your project, get a free LLM API key for answer generation.
 
 **Option 1: OpenRouter**
 - Sign up at [openrouter.ai](https://openrouter.ai/)
 - Access to 100+ models from different providers
-- Config:
+- The config will be:
   ```yaml
   llm_config:
     base_url: https://openrouter.ai/api/v1
@@ -255,46 +171,15 @@ llm_config:
 
 **Option 2: OpenAI**
 - Sign up at [platform.openai.com](https://platform.openai.com/)
-- Config:
+- The config will be:
   ```yaml
   llm_config:
     base_url: https://api.openai.com/v1  # Or omit for default
     model: gpt-4o-mini
     api_key: sk-...  # Get from platform.openai.com/api-keys
   ```
-<!--
-**Option 3: Groq**
-- Sign up at [console.groq.com](https://console.groq.com/)
-- Free tier with fast inference
-- Config:
-  ```yaml
-  llm_config:
-    base_url: https://api.groq.com/openai/v1
-    model: llama-3.3-70b-versatile
-    api_key: gsk_...  # Get from console.groq.com
-  ```
 
-**Option 4: Ollama**
-- Download from [ollama.com](https://ollama.com/)
-- No API key needed, completely free
-- Runs on your computer (requires good CPU/GPU)
-- Setup:
-  ```bash
-  # Install Ollama, then download a model
-  ollama pull llama3.2
-  ollama serve  # Starts local server
-  ```
-- Config:
-  ```yaml
-  llm_config:
-    base_url: http://localhost:11434/v1
-    model: llama3.2
-    api_key: dummy  # Any value works for local
-  ```
--->
-
-
-**Recommendation:** Start with **OpenRouter** (easy, free credits, many models).
+**Recommendation:** Start with **OpenRouter** (easy, free credits, many models). Save your API key - you'll need it in the next step.
 
 ---
 
@@ -312,7 +197,6 @@ The `run_nyrag.sh` script will:
 - Set up all environment variables
 - Start the NyRAG UI on port 8000
 
-![nyrag_7](img/nyrag_7.png)
 
 <!--
 **Or manually:**
@@ -327,23 +211,55 @@ nyrag ui --cloud
 
 Open http://localhost:8000 in your browser.
 
-**3.3 Process your documents:**
+**3.3 Configure your project:**
 
-In the NyRAG UI, you can:
-- Upload your updated `doc_example.yml` file in config directory of the project)
-- Feed data to this project
-- Monitor processing progress
-- See how many documents are processed
+**Step 1: Select and edit the example project**
+- In the top header, the project dropdown will show **"doc_example"** (it's pre-selected by default)
+- The configuration editor should appear automatically showing "Add Config:" or "Edit Config:"
+
+![Project selector dropdown with "doc_example" highlighted](img/nyrag_7.png)
+**Description**: Shows the project dropdown menu in the header with "doc_example" option
+
+> **Note:** If the configuration editor doesn't appear (shows chat interface instead), click the **three-dot menu** (⋮) in the top right corner and select **"Edit Config"** to open it manually.
+
+**Step 2: Update your credentials**
+
+The interactive configuration editor will appear. Update these fields with your information:
+
+**Required fields to update:**
+
+```yaml
+# Your Vespa Cloud credentials (from Vespa Cloud Console)
+cloud_tenant: your-tenant          # Your Vespa Cloud tenant name
+vespa_cloud:
+  endpoint: https://your-app.vespa-cloud.com  # Your Vespa token endpoint (not mtls)
+  token: vespa_cloud_YOUR_TOKEN_HERE          # Your Vespa data plane token
+
+# Your LLM configuration (default: OpenRouter)
+llm_config:
+  api_key: sk-or-v1-YOUR_KEY_HERE   # Your OpenRouter API key (or other provider)
+```
+
+**Notes:**
+- The default LLM provider is OpenRouter. If using a different provider, also update `base_url` and `model`.
+- `start_loc` defaults to `./dataset` for the included example documents.
+
+**Step 3: Save and start processing**
+
+After updating the configuration:
+1. Click **"Save"** or close the editor (changes are saved automatically)
+2. Place your documents in the specified directory, or use the existing `./dataset` folder
+3. Click **"Start Indexing"** to begin processing
 
 NyRAG will automatically:
-1. Read your documents
+1. Read your documents from the specified directory
 2. Chunk them into 1024-character segments
 3. Generate embeddings for each chunk
 4. Feed everything to your Vespa Cloud deployment
+5. Show progress in the terminal output panel
 
-![nyrag_8](img/nyrag_8.png)  
-
-![nyrag_9](img/nyrag_9.png)  
+![Processing progress with terminal logs](img/nyrag_10.png)
+**Description**: Shows documents being processed with terminal logs displaying progress  
 
 ---
 
@@ -351,7 +267,7 @@ NyRAG will automatically:
 
 Once processing is complete, use the NyRAG chat interface to ask questions!
 
-![nyrag_11](img/nyrag_11.png)
+![nyrag_ui](img/nyrag_ui.png)
 
 **How it works:**
 1. You type a question
@@ -374,16 +290,23 @@ Once processing is complete, use the NyRAG chat interface to ask questions!
 
 Want to create a RAG application from website content instead of local documents? NyRAG supports web crawling!
 
-**Quick Start:**
-1. Click the **"Edit Project"** button (pencil icon) in the header
-2. Change `mode` from `docs` to `web`
-3. Set `start_loc` to a website URL (e.g., `https://docs.vespa.ai/`)
-4. Configure crawl settings:
-   - `respect_robots_txt`: Follow robots.txt rules (recommended: `true`)
-   - `follow_subdomains`: Crawl subdomains (e.g., `blog.vespa.ai`)
-   - `exclude`: List of URL patterns to skip (e.g., `/pricing`, `/sales/*`)
-5. Check **"Resume from existing data"** if updating an existing crawl
-6. Click **"Start Indexing"**
+**How to switch to web crawling mode:**
+
+1. **Open the configuration editor**
+   - Select `web_example (web)` on the dropdown list on top
+   - Click the **three-dot menu** (⋮) in the top right
+   - Select **"Edit Config"**
+
+2. **Update the configuration for web mode**
+
+   In the configuration editor, change the required fields which is similar to the doc_example (doc):
+
+3. **Save and start crawling**
+   - Save the configuration
+   - Click **"Start Indexing"**
+
+![Web crawling in progress](img/nyrag_indexing_web_2.png) 
+**Description**: Shows web crawling in progress with terminal logs displaying discovered URLs and processed pages
 
 **Web Mode Features:**
 - Automatic link discovery and crawling
@@ -399,9 +322,11 @@ Want to create a RAG application from website content instead of local documents
 - Help center articles
 - Technical wikis
 
-**Tip:** Start with a small section of a website (use `exclude` patterns) to test before crawling the entire site, and ensure **"Resume from existing data"** is selected. This saves time and Vespa storage!
+**Tips:**
+- Start with a small section of a website to test before crawling the entire site
+- Use `exclude` patterns in the config to skip unwanted pages (e.g., `/pricing`, `/sales/*`)
+- Monitor the terminal output panel to track crawling progress
 
-![nyrag_14](img/nyrag_14.png)
 
 ---
 
@@ -475,6 +400,275 @@ for hit in response.hits:
 
 ---
 -->
+
+## Troubleshooting
+
+Having issues? Here are solutions to common problems:
+
+### Vespa Connection Issues
+
+**Problem: "✗ Cannot connect to Vespa" or "Connection error"**
+
+**Possible causes and solutions:**
+
+1. **Invalid endpoint URL**
+   - Check your endpoint format: `https://[app-id].vespa-app.cloud`
+   - Make sure you're using the **token endpoint** (not the mTLS endpoint)
+   - Find it in Vespa Cloud Console → Your Application → Endpoints
+
+2. **Invalid or expired token**
+   - Token format should be: `vespa_cloud_...`
+   - Generate a new token in Vespa Cloud Console if expired
+   - Make sure there are no extra spaces or line breaks
+
+3. **Missing cloud_tenant**
+   - Set `cloud_tenant` to your Vespa Cloud tenant name
+   - Example: `cloud_tenant: mytenant`
+   - Find it in your Vespa Cloud Console URL
+
+4. **Application not deployed**
+   - Verify your app is running in Vespa Cloud Console
+   - Wait for deployment to finish (green status)
+   - Check deployment logs for errors
+
+**Test your connection:**
+```bash
+# In the config editor, update credentials and tab out
+# Watch the header for: ✓ Connected: X docs (green) or ✗ Error (red)
+```
+
+---
+
+### LLM Connection Issues
+
+**Problem: "✗ LLM error: Invalid API key"**
+
+**Solutions:**
+
+1. **Check API key format**
+   - OpenRouter: `sk-or-v1-...`
+   - OpenAI: `sk-...`
+   - Make sure key is copied completely
+
+2. **Verify API key is active**
+   - Log into your provider dashboard
+   - Check if key has been revoked or expired
+   - Create a new key if needed
+
+**Problem: "✗ LLM error: Model 'xyz' not found"**
+
+**Solutions:**
+
+1. **Check model name spelling**
+   - OpenRouter: `meta-llama/llama-3.2-3b-instruct:free`
+   - OpenAI: `gpt-4o-mini`
+   - Model names are case-sensitive!
+
+2. **Verify model availability**
+   - Some models require credits or subscription
+   - Check provider documentation for available models
+
+**Problem: "✗ LLM error: Connection timeout"**
+
+**Solutions:**
+
+1. **Check base_url**
+   - OpenRouter: `https://openrouter.ai/api/v1`
+   - OpenAI: `https://api.openai.com/v1`
+   - Make sure URL is correct and reachable
+
+2. **Network issues**
+   - Check your internet connection
+   - Try a different provider as test
+
+**Test your LLM connection:**
+```bash
+# Edit api_key in config editor and tab out
+# Watch terminal for: ✓ LLM connected: model-name (green)
+```
+
+---
+
+### Configuration Issues
+
+**Problem: Config editor shows "Invalid YAML"**
+
+**Solutions:**
+
+1. **Check YAML syntax**
+   - Proper indentation (2 spaces, not tabs)
+   - Colons followed by space: `key: value` not `key:value`
+   - No quotes needed for most values
+
+2. **Common YAML mistakes**
+   ```yaml
+   # ❌ Wrong
+   llm_config:
+   api_key: sk-123  # Missing indentation
+
+   # ✅ Correct
+   llm_config:
+     api_key: sk-123
+   ```
+
+**Problem: "No project selected" or config not loading**
+
+**Solutions:**
+
+1. **Check config file exists**
+   ```bash
+   ls output/doc_example/conf.yml
+   ```
+
+2. **Verify file permissions**
+   ```bash
+   chmod 644 output/*/conf.yml
+   ```
+
+3. **Restart NyRAG**
+   ```bash
+   ./stop_nyrag.sh
+   ./run_nyrag.sh
+   ```
+
+---
+
+### Document Processing Issues
+
+**Problem: "No documents indexed" after feeding**
+
+**Solutions:**
+
+1. **Check start_loc path**
+   - Use absolute path: `/full/path/to/documents`
+   - Or relative: `./dataset` (relative to project root)
+   - Verify path exists: `ls /your/path`
+
+2. **File extensions**
+   - Make sure your files match `file_extensions` in config
+   - Default: `.pdf`, `.docx`, `.txt`, `.md`
+   - Check terminal logs for "Processed X files"
+
+3. **File permissions**
+   ```bash
+   # Make files readable
+   chmod -R 644 /path/to/documents
+   ```
+
+**Problem: "Processing failed" errors**
+
+**Solutions:**
+
+1. **Check file size**
+   - Large PDFs may timeout
+   - Set `max_file_size_mb: 50` to skip large files
+
+2. **Corrupted files**
+   - Remove or fix corrupted documents
+   - Check terminal logs for specific file errors
+
+3. **Unsupported formats**
+   - Only certain file types are supported
+   - Convert unsupported files to PDF or TXT
+
+---
+
+### Installation Issues
+
+**Problem: "Command not found: uv"**
+
+**Solution:**
+```bash
+# macOS
+brew install uv
+
+# Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+**Problem: "Command not found: nyrag"**
+
+**Solutions:**
+
+1. **Activate virtual environment**
+   ```bash
+   source .venv/bin/activate
+   ```
+
+2. **Reinstall nyrag**
+   ```bash
+   uv pip install -e .
+   ```
+
+**Problem: Python version mismatch**
+
+**Solution:**
+```bash
+# Check Python version (need 3.10+)
+python3 --version
+
+# Install correct version if needed
+# macOS: brew install python@3.11
+```
+
+---
+
+### Port and Network Issues
+
+**Problem: "Port 8000 already in use"**
+
+**Solutions:**
+
+1. **Kill existing process**
+   ```bash
+   # Find process using port 8000
+   lsof -ti:8000 | xargs kill -9
+   ```
+
+2. **Use different port**
+   ```bash
+   nyrag ui --port 8080
+   ```
+
+**Problem: Browser doesn't open automatically**
+
+**Solution:**
+- Manually open: http://localhost:8000
+- Check terminal for actual port if changed
+
+---
+
+### General Tips
+
+**Enable debug logging:**
+```bash
+export NYRAG_LOG_LEVEL=DEBUG
+./run_nyrag.sh
+```
+
+**Check logs:**
+- Terminal output shows real-time status
+- Look for ERROR or WARNING messages
+- Search for specific error messages online
+
+**Fresh start:**
+```bash
+# Stop everything
+./stop_nyrag.sh
+
+# Clear cache (optional)
+rm -rf output/*/cache
+
+# Restart
+./run_nyrag.sh
+```
+
+**Still stuck?**
+- Join [Vespa Slack](http://slack.vespa.ai/) for community help
+- Check [GitHub Issues](https://github.com/vespauniversity/vespa-ragblueprint/issues)
+- Review [Vespa Documentation](https://docs.vespa.ai/)
+
+---
 
 ## Behind the Scenes
 
@@ -569,6 +763,71 @@ schema doc {
 5. **NyRAG** uses an LLM to generate answers from retrieved chunks
 
 **Note:** While Vespa can generate embeddings and call LLMs directly (via HuggingFace embedder and OpenAI components in `services.xml`), this tutorial uses NyRAG to handle those tasks for simplicity. This NyRAG version is optimized for this workflow.
+
+### Querying Vespa Directly with CLI (Advanced)
+
+While the NyRAG UI provides an easy interface for querying your data, you can also query Vespa directly using the Vespa CLI. This gives you more control and insight into how queries work under the hood.
+
+**Install Vespa CLI:**
+
+```bash
+# macOS
+brew install vespa-cli
+
+# Linux, macOS, Windows
+# Download binary from: https://github.com/vespa-engine/vespa/releases
+# Place in your PATH
+
+# Verify installation
+vespa version
+```
+
+**Configure Vespa CLI for your deployment:**
+
+```bash
+# Set target to cloud
+vespa config set target cloud
+
+# Set your application (from Step 1)
+# Format: <tenant-name>.<application-name>.<instance-name>
+# Example: mytenant.rag-blueprint.default
+vespa config set application <your-tenant>.<your-app>.<your-instance>
+
+# Authenticate with Vespa Cloud
+vespa auth login
+```
+
+**Example queries:**
+
+```bash
+# Simple text search
+vespa query 'yql=select * from doc where userQuery()' \
+  'query=what is vespa?' \
+  'hits=5'
+
+# Hybrid search (text + vector)
+vespa query 'yql=select * from doc where userQuery() or ({targetHits:100}nearestNeighbor(chunk_embeddings,embedding))' \
+  'query=machine learning' \
+  'hits=5'
+
+# With specific rank profile
+vespa query 'yql=select * from doc where userQuery()' \
+  'query=RAG architecture' \
+  'ranking=hybrid' \
+  'hits=10'
+
+# Verbose mode (see full HTTP request/response)
+vespa query -v 'query=search query'
+```
+
+**Why use Vespa CLI?**
+- Direct access to query API without UI layer
+- Test different ranking profiles and query parameters
+- Debug search behavior
+- Integrate with scripts and automation
+- Lower latency (no LLM generation)
+
+**Note:** This is optional! The NyRAG UI handles all of this for you, plus adds LLM-powered answer generation. The CLI is useful for debugging, testing, and advanced use cases.
 
 ---
 
