@@ -198,11 +198,17 @@ echo "✅ Configuration validated successfully"
 echo ""
 
 # Test connection to Vespa Cloud endpoint with token (with timeout)
-echo "Testing connection to Vespa Cloud..."
-echo "  Endpoint: $TOKEN_ENDPOINT"
+# Skip if SKIP_CONNECTION_TEST=1 is set
+if [ "$SKIP_CONNECTION_TEST" = "1" ]; then
+    echo "⚠️  Skipping connection test (SKIP_CONNECTION_TEST=1)"
+    echo "   Connection status will be shown in the UI"
+    echo ""
+else
+    echo "Testing connection to Vespa Cloud..."
+    echo "  Endpoint: $TOKEN_ENDPOINT"
 
 # Run connection test with timeout command (max 20 seconds)
-CONNECTION_TEST=$(timeout 20 python3 << 'PYTHON_SCRIPT'
+CONNECTION_TEST=$(timeout 20 .venv/bin/python3 << 'PYTHON_SCRIPT'
 import urllib.request
 import urllib.error
 import json
@@ -279,6 +285,7 @@ else
     echo "   Continuing anyway - you can check connection in the UI"
     echo ""
 fi
+fi  # End of SKIP_CONNECTION_TEST check
 
 # Check if existing vespa_app exists
 VESPA_APP_PATH="$SCRIPT_DIR/vespa_cloud"
