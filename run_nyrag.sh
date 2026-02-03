@@ -51,8 +51,19 @@ fi
 if [ -z "$TOKEN_ENDPOINT" ]; then
     CONFIG_FILE="$SCRIPT_DIR/config/doc_example.yml"
     if [ -f "$CONFIG_FILE" ]; then
-        CONFIG_ENDPOINT=$(grep -E "^\s+endpoint:\s+https://" "$CONFIG_FILE" | sed -E 's/.*endpoint:\s+//' | tr -d ' ' | head -1)
-        if [ -n "$CONFIG_ENDPOINT" ] && [ "$CONFIG_ENDPOINT" != "https://your-vespa-cloud-endpoint-here.vespa-app.cloud" ]; then
+        # Use Python to properly parse YAML nested structure
+        CONFIG_ENDPOINT=$(python3 -c "
+import yaml
+try:
+    with open('$CONFIG_FILE', 'r') as f:
+        config = yaml.safe_load(f)
+    endpoint = config.get('vespa_cloud', {}).get('endpoint', '')
+    if endpoint and endpoint != 'https://your-vespa-cloud-endpoint-here.vespa-app.cloud':
+        print(endpoint)
+except:
+    pass
+" 2>/dev/null)
+        if [ -n "$CONFIG_ENDPOINT" ]; then
             TOKEN_ENDPOINT="$CONFIG_ENDPOINT"
             echo "✅ Using endpoint from config file: $TOKEN_ENDPOINT"
         fi
@@ -78,9 +89,19 @@ fi
 if [ -z "$VESPA_CLOUD_SECRET_TOKEN" ]; then
     CONFIG_FILE="$SCRIPT_DIR/config/doc_example.yml"
     if [ -f "$CONFIG_FILE" ]; then
-        # Extract token from YAML config under vespa_cloud section
-        TOKEN=$(grep -E "^\s+token:\s+\S+" "$CONFIG_FILE" | sed -E 's/.*token:\s+//' | tr -d ' ')
-        if [ -n "$TOKEN" ] && [ "$TOKEN" != "your-vespa-cloud-token-here" ]; then
+        # Use Python to properly parse YAML nested structure
+        TOKEN=$(python3 -c "
+import yaml
+try:
+    with open('$CONFIG_FILE', 'r') as f:
+        config = yaml.safe_load(f)
+    token = config.get('vespa_cloud', {}).get('token', '')
+    if token and token != 'your-vespa-cloud-token-here':
+        print(token)
+except:
+    pass
+" 2>/dev/null)
+        if [ -n "$TOKEN" ]; then
             export VESPA_CLOUD_SECRET_TOKEN="$TOKEN"
             echo "✅ Using token from $CONFIG_FILE"
         fi
@@ -123,24 +144,137 @@ if [ ! -f "$CONFIG_FILE" ]; then
     exit 1
 fi
 
-# Check if endpoint is configured (not placeholder)
-CONFIG_ENDPOINT=$(grep -E "^\s+endpoint:\s+https://" "$CONFIG_FILE" | sed -E 's/.*endpoint:\s+//' | tr -d ' ' | head -1)
-if [ -z "$CONFIG_ENDPOINT" ] || [ "$CONFIG_ENDPOINT" = "https://your-vespa-cloud-endpoint-here.vespa-app.cloud" ]; then
+# Use Python to parse YAML properly (handles nested structure)
+VALIDATION_RESULT=$(python3 -c "
+import yaml
+import sys
+try:
+    with open('$CONFIG_FILE', 'r') as f:
+        config = yaml.safe_load(f)
+
+    vespa_cloud = config.get('vespa_cloud', {})
+    endpoint = vespa_cloud.get('endpoint', '')
+    token = vespa_cloud.get('token', '')
+
+    # Check endpoint
+    if not endpoint or endpoint == 'https://your-vespa-cloud-endpoint-here.vespa-app.cloud':
+        print('ERROR_ENDPOINT')
+        sys.exit(1)
+
+    # Check token
+    if not token or token == 'your-vespa-cloud-token-here':
+        print('ERROR_TOKEN')
+        sys.exit(1)
+
+    print('OK')
+except Exception as e:
+    print(f'ERROR_PARSE: {e}')
+    sys.exit(1)
+" 2>&1)
+
+if [ "$VALIDATION_RESULT" = "ERROR_ENDPOINT" ]; then
     echo "❌ Vespa Cloud endpoint not configured in $CONFIG_FILE"
     echo "Please set a valid endpoint under vespa_cloud.endpoint"
+    echo ""
+    echo "Example:"
+    echo "  vespa_cloud:"
+    echo "    endpoint: https://your-app.vespa-app.cloud"
     exit 1
-fi
-
-# Check if token is configured (not placeholder)
-CONFIG_TOKEN=$(grep -E "^\s+token:\s+\S+" "$CONFIG_FILE" | sed -E 's/.*token:\s+//' | tr -d ' ' | head -1)
-if [ -z "$CONFIG_TOKEN" ] || [ "$CONFIG_TOKEN" = "your-vespa-cloud-token-here" ]; then
+elif [ "$VALIDATION_RESULT" = "ERROR_TOKEN" ]; then
     echo "❌ Vespa Cloud token not configured in $CONFIG_FILE"
     echo "Please set a valid token under vespa_cloud.token"
+    echo ""
+    echo "Example:"
+    echo "  vespa_cloud:"
+    echo "    token: vespa_cloud_your_token_here"
+    exit 1
+elif [[ "$VALIDATION_RESULT" == ERROR_PARSE* ]]; then
+    echo "❌ Failed to parse $CONFIG_FILE"
+    echo "$VALIDATION_RESULT"
     exit 1
 fi
 
 echo "✅ Configuration validated successfully"
 echo ""
+
+# Test connection to Vespa Cloud endpoint with token
+echo "Testing connection to Vespa Cloud..."
+CONNECTION_TEST=$(python3 -c "
+import urllib.request
+import json
+import sys
+
+endpoint = '${TOKEN_ENDPOINT}'.rstrip('/')
+token = '${VESPA_CLOUD_SECRET_TOKEN}'
+
+# Simple query to test connection
+url = f'{endpoint}/search/'
+data = json.dumps({'yql': 'select * from sources * where true', 'hits': 0}).encode('utf-8')
+headers = {
+    'Content-Type': 'application/json',
+    'Authorization': f'Bearer {token}'
+}
+
+try:
+    req = urllib.request.Request(url, data=data, headers=headers, method='POST')
+    with urllib.request.urlopen(req, timeout=10) as response:
+        if response.status in [200, 400]:  # 200 = success, 400 = query error but connection works
+            print('OK')
+        else:
+            print(f'ERROR_HTTP_{response.status}')
+            sys.exit(1)
+except urllib.error.HTTPError as e:
+    if e.code == 401:
+        print('ERROR_AUTH')
+    elif e.code == 404:
+        print('ERROR_NOT_FOUND')
+    else:
+        print(f'ERROR_HTTP_{e.code}')
+    sys.exit(1)
+except urllib.error.URLError as e:
+    print(f'ERROR_NETWORK: {e.reason}')
+    sys.exit(1)
+except Exception as e:
+    print(f'ERROR_UNKNOWN: {e}')
+    sys.exit(1)
+" 2>&1)
+
+if [ "$CONNECTION_TEST" = "OK" ]; then
+    echo "✅ Successfully connected to Vespa Cloud"
+    echo "   Endpoint: $TOKEN_ENDPOINT"
+    echo ""
+elif [ "$CONNECTION_TEST" = "ERROR_AUTH" ]; then
+    echo "❌ Authentication failed - Invalid token"
+    echo "   Endpoint: $TOKEN_ENDPOINT"
+    echo ""
+    echo "Please check your token in $CONFIG_FILE"
+    echo "Get a valid token from: https://console.vespa-cloud.com/"
+    exit 1
+elif [ "$CONNECTION_TEST" = "ERROR_NOT_FOUND" ]; then
+    echo "❌ Endpoint not found (404)"
+    echo "   Endpoint: $TOKEN_ENDPOINT"
+    echo ""
+    echo "Please check your endpoint in $CONFIG_FILE"
+    echo "Verify your application is deployed in Vespa Cloud console"
+    exit 1
+elif [[ "$CONNECTION_TEST" == ERROR_NETWORK* ]]; then
+    echo "❌ Network error - Cannot reach Vespa Cloud"
+    echo "   Endpoint: $TOKEN_ENDPOINT"
+    echo "   Error: $CONNECTION_TEST"
+    echo ""
+    echo "Please check:"
+    echo "  1. Your internet connection"
+    echo "  2. The endpoint URL is correct"
+    echo "  3. Vespa Cloud is accessible"
+    exit 1
+else
+    echo "❌ Connection test failed"
+    echo "   Endpoint: $TOKEN_ENDPOINT"
+    echo "   Error: $CONNECTION_TEST"
+    echo ""
+    echo "Please check your configuration in $CONFIG_FILE"
+    exit 1
+fi
 
 # Check if existing vespa_app exists
 VESPA_APP_PATH="$SCRIPT_DIR/vespa_cloud"
@@ -161,8 +295,8 @@ echo "Opening browser at http://localhost:8000"
 echo ""
 
 # Open browser after a short delay (in background)
-(sleep 2 && python3 -m webbrowser "http://localhost:8000" 2>/dev/null) &
+(sleep 10 && python3 -m webbrowser "http://localhost:8000" 2>/dev/null) &
 
 # Run the UI (token-based auth, no browser login needed)
 # The VESPA_CLOUD_SECRET_TOKEN environment variable handles authentication
-exec nyrag ui --host 0.0.0.0 --port 8000
+exec nyrag ui --host localhost --port 8000

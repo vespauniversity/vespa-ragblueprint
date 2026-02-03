@@ -10,6 +10,10 @@ vespa_cloud:
   endpoint: https://your-vespa-cloud-endpoint-here.vespa-app.cloud
   # token: YOUR_TOKEN_HERE  # Or set VESPA_CLOUD_SECRET_TOKEN env var
   token: your-vespa-cloud-token-here
+  cloud_tenant: your-tenant  # required for cloud mode (env/CLI still override)
+  cloud_app: rag-blueprint
+  cloud_instance: default
+
 exclude:
   - "*.html"
 

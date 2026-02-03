@@ -5,9 +5,17 @@ start_loc: https://vespa.ai/
 # Use existing Vespa app instead of generating new one
 vespa_app_path: ./vespa_app
 feed_to_vespa: false  # Set to false to skip feeding, only crawl and save to JSONL
-cloud_tenant: your-tenant-here
-cloud_app: rag-blueprint
-cloud_instance: default
+
+# Vespa Cloud configuration
+vespa_cloud:
+  # enpoint (TOKEN version not the MTLS)
+  endpoint: https://your-vespa-cloud-endpoint-here.vespa-app.cloud
+  # token: YOUR_TOKEN_HERE  # Or set VESPA_CLOUD_SECRET_TOKEN env var
+  token: your-vespa-cloud-token-here
+  cloud_tenant: your-tenant  # required for cloud mode (env/CLI still override)
+  cloud_app: rag-blueprint
+  cloud_instance: default
+
 exclude:
   - https://vespa.ai/pricing
   - https://vespa.ai/sales
