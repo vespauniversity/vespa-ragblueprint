@@ -131,7 +131,7 @@ brew install vespa-cli
 # Verify vespa installation
 vespa version
 
-# Install uv (Fast, modern Python package manager)
+# Install uv if missing (Fast, modern Python package manager)
 
 # macOS
 brew install uv
