@@ -198,17 +198,6 @@ The `run_nyrag.sh` script will:
 - Start the NyRAG UI on port 8000
 
 
-<!--
-**Or manually:**
-```bash
-# Set your token as environment variable
-export VESPA_CLOUD_SECRET_TOKEN='your-vespa-cloud-token'
-
-# Start the web interface
-nyrag ui --cloud
-```
--->
-
 Open http://localhost:8000 in your browser.
 
 **3.3 Configure your project:**
@@ -282,6 +271,56 @@ Once processing is complete, use the NyRAG chat interface to ask questions!
 - "Find information about [specific topic]"
 
 **That's it!** You now have a fully functional RAG application.
+
+### Adjusting Search Quality with Ranking Profiles
+
+Want better search results? You can fine-tune how Vespa ranks your documents using the Settings modal (⚙️ icon in the top right).
+
+**Available Ranking Profiles:**
+
+The RAG Blueprint includes 6 different ranking profiles, each optimized for different trade-offs between speed and quality:
+
+1. **base-features** (Default - Fast)
+   - Simple ranking using basic BM25 and vector similarity
+   - Best for: Everyday queries, development, testing
+   - Speed: ⚡⚡⚡ Fast
+
+2. **learned-linear** (Linear Model)
+   - Uses logistic regression with learned coefficients
+   - Best for: Better quality than base, still fast
+   - Speed: ⚡⚡ Medium
+
+3. **second-with-gbdt** (GBDT - Best Quality)
+   - Advanced ranking with LightGBM gradient boosting model
+   - Best for: Highest quality results, production use
+   - Speed: ⚡ Slower but significantly better results
+
+4. **match-only** (No Ranking - Fastest)
+   - Returns matches without ranking
+   - Best for: Testing retrieval, debugging
+   - Speed: ⚡⚡⚡ Fastest
+
+5. **collect-training-data** & **collect-second-phase** (Training)
+   - Special profiles for collecting data to train new models
+   - Best for: Advanced users building custom ranking models
+
+**When to use different profiles:**
+
+- **Daily use**: Stick with `base-features` (default) for fast, good-enough results
+- **Important queries**: Switch to `second-with-gbdt` when you need the best possible answers
+- **Debugging**: Use `match-only` to test if documents are being retrieved correctly
+
+**How to change ranking profiles:**
+
+1. Click the ⚙️ **Settings** icon in the top right corner
+2. Select your preferred **Ranking Profile** from the dropdown
+3. Click **"Save"**
+4. Your next query will use the new profile!
+
+![Settings modal with ranking profile dropdown](img/nyrag_settings_ranking_profiles.png)  
+**Description**: Settings modal showing ranking profile selection dropdown with 6 available options
+
+**Pro tip**: The quality difference between `base-features` and `second-with-gbdt` can be dramatic for complex queries. Try both and see which works best for your use case!
 
 
 ---

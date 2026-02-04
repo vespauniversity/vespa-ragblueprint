@@ -14,6 +14,8 @@ const loadingSpinner = document.getElementById("loading-spinner");
 // Header action buttons
 const saveConfigBtn = document.getElementById("save-config-btn");
 const editConfigMenuBtn = document.getElementById("edit-config-menu-btn");
+const clearCacheBtn = document.getElementById("clear-cache-btn");
+const clearVespaBtn = document.getElementById("clear-vespa-btn");
 const configSelector = document.getElementById("project-selector");
 const configSelectorContainer = document.getElementById("project-selector-container");
 
@@ -116,6 +118,107 @@ if (editConfigMenuBtn) {
     } else {
       // No active project, just open feed mode with blank config
       setMode("feed");
+    }
+  };
+}
+
+// Clear Local Cache button
+if (clearCacheBtn) {
+  clearCacheBtn.onclick = async () => {
+    if (!confirm(`Clear local cache for ALL projects?\n\nThis will delete all data.jsonl files from the output directory. You can re-process documents to rebuild them.`)) {
+      return;
+    }
+
+    try {
+      if (terminalStatus) {
+        terminalStatus.textContent = "Clearing all cache files...";
+        terminalStatus.style.color = "#6b7280";
+      }
+
+      const res = await fetch("/clear-cache", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({})
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.status === "success") {
+        if (terminalStatus) {
+          terminalStatus.textContent = `✓ Cleared ${data.deleted_count || 0} cache files`;
+          terminalStatus.style.color = "#10b981";
+          setTimeout(() => {
+            terminalStatus.textContent = "Ready";
+            terminalStatus.style.color = "var(--accent-color)";
+          }, 3000);
+        }
+      } else {
+        if (terminalStatus) {
+          terminalStatus.textContent = `✗ Failed to clear cache: ${data.message || 'Unknown error'}`;
+          terminalStatus.style.color = "#ef4444";
+        }
+      }
+    } catch (err) {
+      console.error("Failed to clear cache:", err);
+      if (terminalStatus) {
+        terminalStatus.textContent = "✗ Error clearing cache";
+        terminalStatus.style.color = "#ef4444";
+      }
+    }
+  };
+}
+
+// Clear Vespa Data button
+if (clearVespaBtn) {
+  clearVespaBtn.onclick = async () => {
+    if (!activeProjectName) {
+      alert("No project selected");
+      return;
+    }
+
+    if (!confirm(`⚠️ WARNING: Clear ALL documents from Vespa for project "${activeProjectName}"?\n\nThis will delete all indexed documents from Vespa Cloud. This cannot be undone!\n\nYou will need to re-process and re-index all documents.`)) {
+      return;
+    }
+
+    try {
+      if (terminalStatus) {
+        terminalStatus.textContent = "Deleting documents from Vespa...";
+        terminalStatus.style.color = "#6b7280";
+      }
+
+      const res = await fetch("/clear-vespa-data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project_name: activeProjectName })
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.status === "success") {
+        if (terminalStatus) {
+          terminalStatus.textContent = `✓ Deleted ${data.deleted_count || 0} documents from Vespa`;
+          terminalStatus.style.color = "#10b981";
+        }
+        // Refresh stats to show 0 documents
+        await fetchStats();
+        setTimeout(() => {
+          if (terminalStatus) {
+            terminalStatus.textContent = "Ready";
+            terminalStatus.style.color = "var(--accent-color)";
+          }
+        }, 3000);
+      } else {
+        if (terminalStatus) {
+          terminalStatus.textContent = `✗ Failed to clear Vespa data: ${data.message || 'Unknown error'}`;
+          terminalStatus.style.color = "#ef4444";
+        }
+      }
+    } catch (err) {
+      console.error("Failed to clear Vespa data:", err);
+      if (terminalStatus) {
+        terminalStatus.textContent = "✗ Error clearing Vespa data";
+        terminalStatus.style.color = "#ef4444";
+      }
     }
   };
 }
@@ -1052,6 +1155,7 @@ async function sendMessage() {
   const hits = parseInt(document.getElementById("hits").value) || 5;
   const k = parseInt(document.getElementById("k").value) || 3;
   const query_k = parseInt(document.getElementById("query_k").value) || 3;
+  const ranking_profile = document.getElementById("ranking-profile").value || "base-features";
 
   // Create assistant bubble with structure
   const assistantId = addMessage("assistant", "");
@@ -1083,7 +1187,8 @@ async function sendMessage() {
         history: chatHistory,
         hits: hits,
         k: k,
-        query_k: query_k
+        query_k: query_k,
+        ranking_profile: ranking_profile
       })
     });
 
@@ -1507,6 +1612,9 @@ async function loadUserSettings() {
     if (settings.query_k !== undefined) {
       document.getElementById("query_k").value = settings.query_k;
     }
+    if (settings.ranking_profile !== undefined) {
+      document.getElementById("ranking-profile").value = settings.ranking_profile;
+    }
     // Note: We intentionally do NOT auto-select the project here anymore.
     // if (settings.active_project) { await selectProject(settings.active_project); }
   } catch (e) {
@@ -1522,6 +1630,7 @@ async function saveUserSettings() {
       hits: parseInt(document.getElementById("hits").value) || 5,
       k: parseInt(document.getElementById("k").value) || 3,
       query_k: parseInt(document.getElementById("query_k").value) || 3,
+      ranking_profile: document.getElementById("ranking-profile").value || "base-features",
     };
 
     const res = await fetch("/user-settings", {

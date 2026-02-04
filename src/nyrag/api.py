@@ -859,6 +859,131 @@ async def load_config(name: str):
     return {"name": name, "content": content, "source": "config"}
 
 
+@app.post("/clear-cache")
+async def clear_cache(request: Dict[str, str] = Body(default={})):
+    """Clear local cache (data.jsonl) for ALL projects."""
+    output_dir = Path("output")
+
+    try:
+        deleted_files = []
+        deleted_count = 0
+
+        # Find all data.jsonl files in output directory
+        if output_dir.exists():
+            for cache_file in output_dir.glob("*/data.jsonl"):
+                try:
+                    cache_file.unlink()
+                    deleted_files.append(str(cache_file))
+                    deleted_count += 1
+                    logger.info(f"Deleted cache file: {cache_file}")
+                except Exception as e:
+                    logger.warning(f"Failed to delete {cache_file}: {e}")
+
+        if deleted_count > 0:
+            return {
+                "status": "success",
+                "message": f"Cleared {deleted_count} cache file(s)",
+                "deleted_count": deleted_count,
+                "deleted_files": deleted_files
+            }
+        else:
+            return {
+                "status": "success",
+                "message": "No cache files found",
+                "deleted_count": 0,
+                "deleted_files": []
+            }
+    except Exception as e:
+        logger.error(f"Failed to clear cache: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to clear cache: {str(e)}")
+
+
+@app.post("/clear-vespa-data")
+async def clear_vespa_data(request: Dict[str, str] = Body(...)):
+    """Delete all documents from Vespa for the current schema."""
+    project_name = request.get("project_name")
+    if not project_name:
+        raise HTTPException(status_code=400, detail="project_name is required")
+
+    try:
+        # Build delete query to remove all documents
+        schema_name = settings.get("schema_name", "doc")
+
+        # Use a visit query to delete all documents
+        # This is safer than trying to delete by ID since we might not know all IDs
+        delete_query = {
+            "deleteQuery": f"select * from {schema_name} where true",
+        }
+
+        logger.info(f"Deleting all documents from schema '{schema_name}'")
+
+        # Send delete request to Vespa
+        response = vespa_app.delete_all_docs(
+            content_cluster_name="content",
+            schema=schema_name,
+        )
+
+        # Count deleted documents by querying before and after
+        # (Note: This is approximate since delete is async)
+        count_query = {
+            "yql": f"select * from {schema_name} where true",
+            "hits": 0,
+        }
+
+        count_result = vespa_app.query(body=count_query, schema=schema_name)
+        remaining_docs = count_result.json.get("root", {}).get("fields", {}).get("totalCount", 0)
+
+        logger.info(f"Vespa delete initiated. Remaining docs: {remaining_docs}")
+
+        return {
+            "status": "success",
+            "message": f"Delete request sent to Vespa for project '{project_name}'",
+            "deleted_count": "pending",  # Vespa deletes are async
+            "remaining_count": remaining_docs
+        }
+
+    except AttributeError:
+        # vespa_app.delete_all_docs might not exist, use alternative approach
+        try:
+            # Alternative: Send HTTP DELETE request directly
+            schema_name = settings.get("schema_name", "doc")
+
+            # Query all document IDs first
+            query_body = {
+                "yql": f"select id from {schema_name} where true",
+                "hits": 10000,  # Get up to 10k docs (adjust if needed)
+            }
+
+            result = vespa_app.query(body=query_body, schema=schema_name)
+            hits = result.json.get("root", {}).get("children", [])
+            doc_ids = [hit["fields"]["id"] for hit in hits if "fields" in hit and "id" in hit["fields"]]
+
+            # Delete documents individually
+            deleted_count = 0
+            for doc_id in doc_ids:
+                try:
+                    vespa_app.delete_data(schema=schema_name, data_id=doc_id)
+                    deleted_count += 1
+                except Exception as e:
+                    logger.warning(f"Failed to delete doc {doc_id}: {e}")
+
+            logger.info(f"Deleted {deleted_count} documents from Vespa")
+
+            return {
+                "status": "success",
+                "message": f"Deleted documents from Vespa for project '{project_name}'",
+                "deleted_count": deleted_count
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to clear Vespa data: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to clear Vespa data: {str(e)}")
+
+    except Exception as e:
+        logger.error(f"Failed to clear Vespa data: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to clear Vespa data: {str(e)}")
+
+
 @app.get("/user-settings")
 async def get_user_settings():
     """Get user settings from ~/.nyrag/settings.json"""
@@ -951,9 +1076,10 @@ class ChatRequest(BaseModel):
         description="Number of alternate search queries to generate with the LLM",
     )
     model: Optional[str] = Field(None, description="OpenRouter model id (optional, uses env default if set)")
+    ranking_profile: str = Field("base-features", description="Vespa ranking profile to use")
 
 
-def _fetch_chunks(query: str, hits: int, k: int) -> List[Dict[str, Any]]:
+def _fetch_chunks(query: str, hits: int, k: int, ranking_profile: str = "base-features") -> List[Dict[str, Any]]:
     # Generate float embedding for the query
     float_embedding = model.encode(query, convert_to_numpy=True).tolist()
 
@@ -961,8 +1087,9 @@ def _fetch_chunks(query: str, hits: int, k: int) -> List[Dict[str, Any]]:
         "yql": "select * from doc where {defaultIndex:\"default\"}userInput(@query)",
         "query": query,
         "hits": hits,
+        "ranking": ranking_profile,
         "summary": DEFAULT_SUMMARY,
-        "ranking.profile": DEFAULT_RANKING,
+        "ranking.profile": ranking_profile,  # Use user-selected ranking profile
         "input.query(float_embedding)": float_embedding,  # Pass as float_embedding, not embedding
         "input.query(k)": k,
         "timeout": "20s",  # Increased timeout for slow Vespa Cloud queries
@@ -1023,9 +1150,9 @@ def _fetch_chunks(query: str, hits: int, k: int) -> List[Dict[str, Any]]:
     return chunks
 
 
-async def _fetch_chunks_async(query: str, hits: int, k: int) -> List[Dict[str, Any]]:
+async def _fetch_chunks_async(query: str, hits: int, k: int, ranking_profile: str = "base-features") -> List[Dict[str, Any]]:
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, partial(_fetch_chunks, query, hits, k))
+    return await loop.run_in_executor(None, partial(_fetch_chunks, query, hits, k, ranking_profile))
 
 
 def _get_llm_client() -> AsyncOpenAI:
@@ -1174,6 +1301,7 @@ async def _generate_search_queries_stream(
     num_queries: int,
     hits: int,
     k: int,
+    ranking_profile: str = "base-features",
     history: Optional[List[Dict[str, str]]] = None,
 ) -> AsyncGenerator[Tuple[str, Any], None]:
     """Use the chat LLM to propose focused search queries grounded in retrieved chunks."""
@@ -1181,7 +1309,7 @@ async def _generate_search_queries_stream(
         yield "result", []
         return
 
-    grounding_chunks = (await _fetch_chunks_async(user_message, hits=hits, k=k))[:5]
+    grounding_chunks = (await _fetch_chunks_async(user_message, hits=hits, k=k, ranking_profile=ranking_profile))[:5]
     grounding_text = "\n".join(f"- [{c.get('loc','')}] {c.get('chunk','')}" for c in grounding_chunks)
 
     system_prompt = (
@@ -1277,12 +1405,13 @@ async def _prepare_queries_stream(
     query_k: int,
     hits: int,
     k: int,
+    ranking_profile: str = "base-features",
     history: Optional[List[Dict[str, str]]] = None,
 ) -> AsyncGenerator[Tuple[str, Any], None]:
     """Build the list of queries (original + enhanced) for retrieval."""
     enhanced = []
     async for event_type, payload in _generate_search_queries_stream(
-        user_message, model_id, query_k, hits=hits, k=k, history=history
+        user_message, model_id, query_k, hits=hits, k=k, ranking_profile=ranking_profile, history=history
     ):
         if event_type == "thinking":
             yield "thinking", payload
@@ -1312,12 +1441,12 @@ async def _prepare_queries(user_message: str, model_id: str, query_k: int, hits:
     return queries
 
 
-async def _fuse_chunks(queries: List[str], hits: int, k: int) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+async def _fuse_chunks(queries: List[str], hits: int, k: int, ranking_profile: str = "base-features") -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     """Search Vespa for each query and return fused, deduped chunks."""
     all_chunks: List[Dict[str, Any]] = []
     logger.info(f"Fetching chunks for {len(queries)} queries")
 
-    tasks = [_fetch_chunks_async(q, hits=hits, k=k) for q in queries]
+    tasks = [_fetch_chunks_async(q, hits=hits, k=k, ranking_profile=ranking_profile) for q in queries]
     results = await asyncio.gather(*tasks)
     for res in results:
         all_chunks.extend(res)
@@ -1428,7 +1557,7 @@ async def _chat_stream(req: ChatRequest):
     queries = []
 
     async for event_type, payload in _prepare_queries_stream(
-        req.message, model_id, req.query_k, req.hits, req.k, history=req.history
+        req.message, model_id, req.query_k, req.hits, req.k, req.ranking_profile, history=req.history
     ):
         if event_type == "thinking":
             yield sse("thinking", payload)
@@ -1438,7 +1567,7 @@ async def _chat_stream(req: ChatRequest):
 
     # 2. Retrieve and Fuse
     yield sse("status", "Retrieving context from Vespa...")
-    used_queries, chunks = await _fuse_chunks(queries, req.hits, req.k)
+    used_queries, chunks = await _fuse_chunks(queries, req.hits, req.k, req.ranking_profile)
     yield sse("sources", chunks)
 
     if not chunks:

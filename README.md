@@ -303,6 +303,38 @@ vespa query 'query=What is RAG?'
 
 **Note:** The NyRAG UI is the recommended way to query your data, as it includes LLM-powered answer generation. Use the CLI for debugging, testing, or automation.
 
+## Ranking Profiles
+
+The RAG Blueprint includes 6 pre-configured ranking profiles that control how Vespa ranks search results. You can select different profiles from the Settings modal (⚙️ icon) in the NyRAG UI.
+
+**Available Profiles:**
+
+| Profile | Speed | Quality | Use Case |
+|---------|-------|---------|----------|
+| **base-features** | ⚡⚡⚡ Fast | Good | Default for everyday queries |
+| **learned-linear** | ⚡⚡ Medium | Better | Linear model with learned coefficients |
+| **second-with-gbdt** | ⚡ Slower | Best | LightGBM gradient boosting for production |
+| **match-only** | ⚡⚡⚡ Fastest | None | Testing/debugging retrieval only |
+| **collect-training-data** | ⚡⚡ Medium | N/A | Collecting features for training |
+| **collect-second-phase** | ⚡ Slower | N/A | Collecting second-phase features |
+
+**How They Work:**
+
+- **base-features**: Simple linear combination of BM25 text scores and vector similarity
+- **learned-linear**: Logistic regression model trained on relevance judgments (see `eval/` folder)
+- **second-with-gbdt**: Two-phase ranking - linear first-phase + LightGBM second-phase for top results
+- **match-only**: Returns documents in match order without ranking computation
+
+**Changing Profiles:**
+
+1. Open NyRAG UI at http://localhost:8000
+2. Click Settings (⚙️) in top right
+3. Select desired ranking profile from dropdown
+4. Click "Save"
+5. Future queries use the new profile
+
+**Pro Tip:** The `second-with-gbdt` profile can significantly improve result quality for complex queries, but adds latency. Use `base-features` for speed, `second-with-gbdt` for quality.
+
 ## Advanced: The Schema
 
 The RAG Blueprint uses this schema (`vespa_cloud/schemas/doc.sd`):
@@ -361,6 +393,12 @@ schema doc {
 - **Hybrid Search**: Combines BM25 (keyword) + vector (semantic) search
 - **Binary Quantization**: 10x storage reduction with minimal quality loss
 - **Multi-Query RAG**: Generates multiple search queries for better recall
+
+### Configurable Ranking Profiles
+- **6 ranking profiles**: Choose from fast (`base-features`) to best quality (`second-with-gbdt`)
+- **Learned models**: Linear regression and LightGBM gradient boosting for advanced ranking
+- **Easy switching**: Select ranking profile from settings modal - no redeployment needed
+- **Quality vs speed**: Trade off latency for result quality based on your needs
 
 ## Scripts
 
