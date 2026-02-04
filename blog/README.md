@@ -304,6 +304,8 @@ The RAG Blueprint includes 6 different ranking profiles, each optimized for diff
    - Special profiles for collecting data to train new models
    - Best for: Advanced users building custom ranking models
 
+> **For Advanced Users:** Want to understand the technical details behind these ranking profiles? Learn about phased ranking architecture, LightGBM model integration, tensor operations, and how Vespa scales ranking to billions of documents. See the comprehensive [Ranking Profiles technical guide](https://github.com/vespauniversity/vespa-ragblueprint#ranking-profiles) in the main README, including GitHub folder structure (`vespa_cloud/schemas/doc/*.profile`) and profile inheritance.
+
 **When to use different profiles:**
 
 - **Daily use**: Stick with `base-features` (default) for fast, good-enough results
@@ -317,11 +319,38 @@ The RAG Blueprint includes 6 different ranking profiles, each optimized for diff
 3. Click **"Save"**
 4. Your next query will use the new profile!
 
-![Settings modal with ranking profile dropdown](img/nyrag_settings_ranking_profiles.png)  
+![Settings modal with ranking profile dropdown](img/nyrag_settings_ranking_profiles.png)
 **Description**: Settings modal showing ranking profile selection dropdown with 6 available options
 
 **Pro tip**: The quality difference between `base-features` and `second-with-gbdt` can be dramatic for complex queries. Try both and see which works best for your use case!
 
+---
+
+**Advanced: Querying with Ranking Profiles via CLI**
+
+If you prefer using the Vespa CLI for direct queries (without the NyRAG UI), you can specify the ranking profile:
+
+```bash
+# Query with specific ranking profile
+vespa query 'query=machine learning' 'ranking=second-with-gbdt'
+
+# Compare results with different profiles
+vespa query 'query=RAG architecture' 'ranking=base-features'
+vespa query 'query=RAG architecture' 'ranking=second-with-gbdt'
+```
+
+See the [Vespa CLI section](#querying-vespa-directly-with-cli-advanced) in "Behind the Scenes" for setup instructions.
+
+---
+
+### Managing Your Data
+
+Need to reset or clean up your data? The advanced menu (three-dot icon ⋮ in the top right) provides data management options:
+
+- **Clear Local Cache**: Removes all cached data files from all projects on your local machine
+- **Clear Vespa Data**: Deletes all documents from Vespa for the currently selected project
+
+Both options require confirmation before proceeding. Use these when you want to start fresh or remove old data.
 
 ---
 
@@ -442,270 +471,12 @@ for hit in response.hits:
 
 ## Troubleshooting
 
-Having issues? Here are solutions to common problems:
-
-### Vespa Connection Issues
-
-**Problem: "✗ Cannot connect to Vespa" or "Connection error"**
-
-**Possible causes and solutions:**
-
-1. **Invalid endpoint URL**
-   - Check your endpoint format: `https://[app-id].vespa-app.cloud`
-   - Make sure you're using the **token endpoint** (not the mTLS endpoint)
-   - Find it in Vespa Cloud Console → Your Application → Endpoints
-
-2. **Invalid or expired token**
-   - Token format should be: `vespa_cloud_...`
-   - Generate a new token in Vespa Cloud Console if expired
-   - Make sure there are no extra spaces or line breaks
-
-3. **Missing cloud_tenant**
-   - Set `cloud_tenant` to your Vespa Cloud tenant name
-   - Example: `cloud_tenant: mytenant`
-   - Find it in your Vespa Cloud Console URL
-
-4. **Application not deployed**
-   - Verify your app is running in Vespa Cloud Console
-   - Wait for deployment to finish (green status)
-   - Check deployment logs for errors
-
-**Test your connection:**
-```bash
-# In the config editor, update credentials and tab out
-# Watch the header for: ✓ Connected: X docs (green) or ✗ Error (red)
-```
-
----
-
-### LLM Connection Issues
-
-**Problem: "✗ LLM error: Invalid API key"**
-
-**Solutions:**
-
-1. **Check API key format**
-   - OpenRouter: `sk-or-v1-...`
-   - OpenAI: `sk-...`
-   - Make sure key is copied completely
-
-2. **Verify API key is active**
-   - Log into your provider dashboard
-   - Check if key has been revoked or expired
-   - Create a new key if needed
-
-**Problem: "✗ LLM error: Model 'xyz' not found"**
-
-**Solutions:**
-
-1. **Check model name spelling**
-   - OpenRouter: `meta-llama/llama-3.2-3b-instruct:free`
-   - OpenAI: `gpt-4o-mini`
-   - Model names are case-sensitive!
-
-2. **Verify model availability**
-   - Some models require credits or subscription
-   - Check provider documentation for available models
-
-**Problem: "✗ LLM error: Connection timeout"**
-
-**Solutions:**
-
-1. **Check base_url**
-   - OpenRouter: `https://openrouter.ai/api/v1`
-   - OpenAI: `https://api.openai.com/v1`
-   - Make sure URL is correct and reachable
-
-2. **Network issues**
-   - Check your internet connection
-   - Try a different provider as test
-
-**Test your LLM connection:**
-```bash
-# Edit api_key in config editor and tab out
-# Watch terminal for: ✓ LLM connected: model-name (green)
-```
-
----
-
-### Configuration Issues
-
-**Problem: Config editor shows "Invalid YAML"**
-
-**Solutions:**
-
-1. **Check YAML syntax**
-   - Proper indentation (2 spaces, not tabs)
-   - Colons followed by space: `key: value` not `key:value`
-   - No quotes needed for most values
-
-2. **Common YAML mistakes**
-   ```yaml
-   # ❌ Wrong
-   llm_config:
-   api_key: sk-123  # Missing indentation
-
-   # ✅ Correct
-   llm_config:
-     api_key: sk-123
-   ```
-
-**Problem: "No project selected" or config not loading**
-
-**Solutions:**
-
-1. **Check config file exists**
-   ```bash
-   ls output/doc_example/conf.yml
-   ```
-
-2. **Verify file permissions**
-   ```bash
-   chmod 644 output/*/conf.yml
-   ```
-
-3. **Restart NyRAG**
-   ```bash
-   ./stop_nyrag.sh
-   ./run_nyrag.sh
-   ```
-
----
-
-### Document Processing Issues
-
-**Problem: "No documents indexed" after feeding**
-
-**Solutions:**
-
-1. **Check start_loc path**
-   - Use absolute path: `/full/path/to/documents`
-   - Or relative: `./dataset` (relative to project root)
-   - Verify path exists: `ls /your/path`
-
-2. **File extensions**
-   - Make sure your files match `file_extensions` in config
-   - Default: `.pdf`, `.docx`, `.txt`, `.md`
-   - Check terminal logs for "Processed X files"
-
-3. **File permissions**
-   ```bash
-   # Make files readable
-   chmod -R 644 /path/to/documents
-   ```
-
-**Problem: "Processing failed" errors**
-
-**Solutions:**
-
-1. **Check file size**
-   - Large PDFs may timeout
-   - Set `max_file_size_mb: 50` to skip large files
-
-2. **Corrupted files**
-   - Remove or fix corrupted documents
-   - Check terminal logs for specific file errors
-
-3. **Unsupported formats**
-   - Only certain file types are supported
-   - Convert unsupported files to PDF or TXT
-
----
-
-### Installation Issues
-
-**Problem: "Command not found: uv"**
-
-**Solution:**
-```bash
-# macOS
-brew install uv
-
-# Linux
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
-**Problem: "Command not found: nyrag"**
-
-**Solutions:**
-
-1. **Activate virtual environment**
-   ```bash
-   source .venv/bin/activate
-   ```
-
-2. **Reinstall nyrag**
-   ```bash
-   uv pip install -e .
-   ```
-
-**Problem: Python version mismatch**
-
-**Solution:**
-```bash
-# Check Python version (need 3.10+)
-python3 --version
-
-# Install correct version if needed
-# macOS: brew install python@3.11
-```
-
----
-
-### Port and Network Issues
-
-**Problem: "Port 8000 already in use"**
-
-**Solutions:**
-
-1. **Kill existing process**
-   ```bash
-   # Find process using port 8000
-   lsof -ti:8000 | xargs kill -9
-   ```
-
-2. **Use different port**
-   ```bash
-   nyrag ui --port 8080
-   ```
-
-**Problem: Browser doesn't open automatically**
-
-**Solution:**
-- Manually open: http://localhost:8000
-- Check terminal for actual port if changed
-
----
-
-### General Tips
-
-**Enable debug logging:**
-```bash
-export NYRAG_LOG_LEVEL=DEBUG
-./run_nyrag.sh
-```
-
-**Check logs:**
-- Terminal output shows real-time status
-- Look for ERROR or WARNING messages
-- Search for specific error messages online
-
-**Fresh start:**
-```bash
-# Stop everything
-./stop_nyrag.sh
-
-# Clear cache (optional)
-rm -rf output/*/cache
-
-# Restart
-./run_nyrag.sh
-```
-
-**Still stuck?**
-- Join [Vespa Slack](http://slack.vespa.ai/) for community help
-- Check [GitHub Issues](https://github.com/vespauniversity/vespa-ragblueprint/issues)
-- Review [Vespa Documentation](https://docs.vespa.ai/)
+Running into issues? We've got you covered! For detailed troubleshooting guides covering Vespa connection errors, LLM configuration, document processing, and more, see the **[Troubleshooting section](https://github.com/vespauniversity/vespa-ragblueprint#troubleshooting)** in the main README.
+
+**Quick help:**
+- **Community support**: Join [Vespa Slack](http://slack.vespa.ai/)
+- **Report issues**: [GitHub Issues](https://github.com/vespauniversity/vespa-ragblueprint/issues)
+- **Documentation**: [Vespa Docs](https://docs.vespa.ai/)
 
 ---
 

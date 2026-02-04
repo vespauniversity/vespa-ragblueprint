@@ -321,19 +321,143 @@ The RAG Blueprint includes 6 pre-configured ranking profiles that control how Ve
 **How They Work:**
 
 - **base-features**: Simple linear combination of BM25 text scores and vector similarity
+  - Single-phase ranking using basic features
+  - Fast computation on all matched documents
+  - Uses `bm25(title)`, `bm25(chunks)`, and embedding closeness scores
+
 - **learned-linear**: Logistic regression model trained on relevance judgments (see `eval/` folder)
+  - First-phase ranking with learned coefficients
+  - Combines multiple features: `bm25()`, `max_chunk_sim_scores`, `avg_top_3_chunk_sim_scores`, etc.
+  - Trained on labeled data using `eval/train_logistic_regression.py`
+
 - **second-with-gbdt**: Two-phase ranking - linear first-phase + LightGBM second-phase for top results
+  - **First-phase**: Learned linear model evaluates all matched documents (fast)
+  - **Second-phase**: LightGBM gradient boosting reranks top candidates only (expensive but accurate)
+  - Uses ML model from `vespa_cloud/models/lightgbm_model.json`
+  - Includes expensive features: `nativeProximity`, `nativeRank`, `nativeFieldMatch`, `elementSimilarity`
+  - Controlled by `rerank-count` (how many docs to rerank in second phase)
+
 - **match-only**: Returns documents in match order without ranking computation
+  - Skips all ranking for maximum performance
+  - Useful for debugging retrieval or when results are pre-sorted
+
+**Why These Profiles Are Advanced:**
+
+Vespa's ranking profiles leverage sophisticated features that enable production-scale relevance:
+
+1. **Phased Ranking Architecture**:
+   - **First-phase**: Runs on all matched documents with cheap features (BM25, basic similarity)
+   - **Second-phase**: Runs only on top-K candidates with expensive ML models (LightGBM, ONNX)
+   - **Result**: Scales to billions of documents by directing expensive compute only where it matters
+
+2. **Machine Learning Integration**:
+   - Direct ONNX and LightGBM model execution in Vespa (no external service calls)
+   - Models trained using `eval/train_lightgbm.py` on relevance judgments
+   - Supports arbitrary mathematical expressions and tensor operations over 100+ rank features
+
+3. **Hybrid Search**:
+   - Combines lexical (BM25) and semantic (vector embeddings) signals
+   - Tensor operations: `sum(query(embedding) * attribute(chunk_embeddings))`
+   - Uses binary quantized embeddings with Hamming distance for efficiency
+
+4. **Profile Inheritance**:
+   - Profiles inherit from each other to reduce duplication
+   - Example: `second-with-gbdt` inherits `base-features` and adds second-phase
+   - Reusable functions like `max_chunk_sim_scores()` across profiles
+
+**GitHub Locations:**
+
+Ranking profiles are defined in the application package:
+
+```
+vespa_cloud/
+├── schemas/
+│   └── doc/
+│       ├── doc.sd                        # Main schema with base features
+│       ├── base-features.profile         # Base ranking profile (default)
+│       ├── learned-linear.profile        # First-phase learned model
+│       ├── second-with-gbdt.profile      # Two-phase with LightGBM
+│       ├── match-only.profile            # No ranking (fastest)
+│       ├── collect-training-data.profile # Training data collection
+│       └── collect-second-phase.profile  # Second-phase training data
+├── models/
+│   └── lightgbm_model.json              # LightGBM model for second-phase
+└── search/
+    └── query-profiles/                   # Default query settings per profile
+```
+
+**Profile Inheritance Structure:**
+- `base-features` (foundation) → inherited by most profiles
+- `learned-linear` inherits `base-features` + adds learned coefficients
+- `second-with-gbdt` inherits `base-features` + adds LightGBM second-phase
+- `collect-*` profiles inherit base features + expose training data features
 
 **Changing Profiles:**
 
+**Via NyRAG UI (Recommended):**
 1. Open NyRAG UI at http://localhost:8000
 2. Click Settings (⚙️) in top right
 3. Select desired ranking profile from dropdown
 4. Click "Save"
 5. Future queries use the new profile
 
-**Pro Tip:** The `second-with-gbdt` profile can significantly improve result quality for complex queries, but adds latency. Use `base-features` for speed, `second-with-gbdt` for quality.
+**Via Python (pyvespa):**
+
+```python
+from vespa.application import Vespa
+
+# Connect to Vespa
+app = Vespa(
+    url="https://your-app.vespa-cloud.com",
+    vespa_cloud_secret_token="your-token"
+)
+
+# Query with specific ranking profile
+response = app.query(
+    yql="select * from doc where userQuery()",
+    query="What is RAG?",
+    ranking="second-with-gbdt",  # Specify ranking profile
+    hits=5
+)
+
+# Compare different ranking profiles
+profiles = ["base-features", "learned-linear", "second-with-gbdt"]
+for profile in profiles:
+    response = app.query(
+        yql="select * from doc where userQuery()",
+        query="machine learning",
+        ranking=profile,
+        hits=3
+    )
+    print(f"\n{profile}: {len(response.hits)} hits")
+    for hit in response.hits:
+        print(f"  - {hit['fields']['title']} (relevance: {hit['relevance']})")
+```
+
+**Via Vespa CLI:**
+
+```bash
+# Query with specific ranking profile
+vespa query 'query=machine learning' 'ranking=second-with-gbdt'
+
+# Compare results across profiles
+vespa query 'query=RAG architecture' 'ranking=base-features'
+vespa query 'query=RAG architecture' 'ranking=learned-linear'
+vespa query 'query=RAG architecture' 'ranking=second-with-gbdt'
+
+# Use with other query parameters
+vespa query \
+  'query=hybrid search' \
+  'ranking=second-with-gbdt' \
+  'hits=10'
+```
+
+**Parameters:**
+- `ranking` or `ranking.profile`: Name of the ranking profile to use
+- Both parameters work identically - use whichever you prefer
+- Profile must exist in `vespa_cloud/schemas/doc/*.profile` files
+
+**Pro Tip:** The `second-with-gbdt` profile can significantly improve result quality for complex queries, but adds latency (~2-3x slower). Use `base-features` for speed, `second-with-gbdt` for quality. Benchmark both on your data to find the right balance.
 
 ## Advanced: The Schema
 
@@ -400,6 +524,18 @@ schema doc {
 - **Easy switching**: Select ranking profile from settings modal - no redeployment needed
 - **Quality vs speed**: Trade off latency for result quality based on your needs
 
+### Data Management
+- **Clear Local Cache**: Remove all cached data files (`output/*/data.jsonl`) from all projects
+  - Use when: Starting fresh, freeing up disk space, or resolving cache corruption issues
+  - Effect: Deletes local cache only - Vespa data remains intact
+  - Accessible via: Advanced menu (⋮) → "Clear Local Cache"
+- **Clear Vespa Data**: Delete all documents from Vespa for the currently selected project
+  - Use when: Reindexing from scratch, removing outdated data, or switching datasets
+  - Effect: Permanently removes documents from Vespa Cloud - local cache remains
+  - Accessible via: Advanced menu (⋮) → "Clear Vespa Data"
+- **Confirmation required**: Both actions require user confirmation before proceeding
+- **Safe operations**: Clear operations don't delete your source documents or configuration files
+
 ## Scripts
 
 ### `run_nyrag.sh`
@@ -443,12 +579,37 @@ Common causes:
 - Verify model name spelling (case-sensitive!)
 - OpenRouter: `meta-llama/llama-3.2-3b-instruct:free`
 - OpenAI: `gpt-4o-mini`
+- Some models require credits or subscription
+
+**"✗ LLM error: Connection timeout"**
+
+- Check `base_url` is correct: OpenRouter (`https://openrouter.ai/api/v1`), OpenAI (`https://api.openai.com/v1`)
+- Verify internet connection
+- Try a different provider as test
 
 **Test connection**: Edit LLM credentials, tab out, watch terminal for `✓ LLM connected`
 
 ### Configuration Issues
 
-**Config not loading or YAML errors**
+**"Invalid YAML" or config editor errors**
+
+Check YAML syntax:
+- Proper indentation (2 spaces, not tabs)
+- Colons followed by space: `key: value` not `key:value`
+- No quotes needed for most values
+
+Common YAML mistakes:
+```yaml
+# ❌ Wrong
+llm_config:
+api_key: sk-123  # Missing indentation
+
+# ✅ Correct
+llm_config:
+  api_key: sk-123
+```
+
+**"No project selected" or config not loading**
 
 ```bash
 # Check file exists
@@ -461,26 +622,36 @@ chmod 644 output/*/conf.yml
 ./stop_nyrag.sh && ./run_nyrag.sh
 ```
 
-**YAML syntax**: Use 2 spaces for indentation, `key: value` format (space after colon)
-
 ### Document Processing Issues
 
-**No documents indexed after feeding**
+**"No documents indexed" after feeding**
 
-- Check `start_loc` path is correct: `ls /your/path`
+- Check `start_loc` path is correct: `ls /your/path` (use absolute or relative path like `./dataset`)
 - Verify file extensions match config (default: `.pdf`, `.docx`, `.txt`, `.md`)
 - Check file permissions: `chmod -R 644 /path/to/documents`
-- Review terminal logs for processing errors
+- Review terminal logs for "Processed X files" messages
+
+**"Processing failed" errors**
+
+- **Large files**: PDFs may timeout - set `max_file_size_mb: 50` in config to skip large files
+- **Corrupted files**: Remove or fix corrupted documents, check terminal logs for specific file errors
+- **Unsupported formats**: Only certain file types supported - convert to PDF or TXT
 
 ### Installation Issues
 
-**"Command not found: uv" or "nyrag"**
+**"Command not found: uv"**
 
 ```bash
-# Install uv (if missing)
-brew install uv  # macOS
-# or: curl -LsSf https://astral.sh/uv/install.sh | sh
+# macOS
+brew install uv
 
+# Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+**"Command not found: nyrag"**
+
+```bash
 # Activate virtual environment
 source .venv/bin/activate
 
@@ -488,7 +659,17 @@ source .venv/bin/activate
 uv pip install -e .
 ```
 
-### Port Issues
+**Python version mismatch**
+
+```bash
+# Check Python version (need 3.10+)
+python3 --version
+
+# Install correct version if needed
+# macOS: brew install python@3.11
+```
+
+### Port and Network Issues
 
 **"Port 8000 already in use"**
 
@@ -500,12 +681,41 @@ lsof -ti:8000 | xargs kill -9
 nyrag ui --port 8080
 ```
 
-### Getting More Help
+**Browser doesn't open automatically**
 
-- **Full troubleshooting guide**: See [blog/README.md](blog/README.md#troubleshooting)
-- **Debug logging**: `export NYRAG_LOG_LEVEL=DEBUG`
+- Manually open: http://localhost:8000
+- Check terminal for actual port if changed
+
+### General Tips
+
+**Enable debug logging:**
+```bash
+export NYRAG_LOG_LEVEL=DEBUG
+./run_nyrag.sh
+```
+
+**Check logs:**
+- Terminal output shows real-time status
+- Look for ERROR or WARNING messages
+- Search for specific error messages online
+
+**Fresh start:**
+```bash
+# Stop everything
+./stop_nyrag.sh
+
+# Clear cache (optional)
+rm -rf output/*/cache
+
+# Restart
+./run_nyrag.sh
+```
+
+**Still stuck?**
+- **Tutorial guide**: See [blog/README.md](blog/README.md)
 - **Community**: Join [Vespa Slack](http://slack.vespa.ai/)
 - **Issues**: [GitHub Issues](https://github.com/vespauniversity/vespa-ragblueprint/issues)
+- **Docs**: [Vespa Documentation](https://docs.vespa.ai/)
 
 ## Learn More
 
