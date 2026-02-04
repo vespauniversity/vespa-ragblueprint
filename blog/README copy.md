@@ -177,16 +177,8 @@ The RAG Blueprint includes 6 different ranking profiles, each optimized for diff
 ## Add front end UI and feeding pipelines
 
 Now let's install the NyRAG tool from the vespa-ragblueprint repository that handles front end UI and feeding pipelines. NyRAG is the glue that reads documents (local files or websites), splits text into chunks, generates embeddings, feeds the results to Vespa, and then exposes a simple chat UI that answers questions using the retrieved chunks as context.
-### How Data Flows
 
-**In this setup:**
-1. **NyRAG** reads your documents and generates embeddings (using sentence-transformers)
-2. **NyRAG** chunks text into 1024-character segments
-3. **NyRAG** feeds documents with embeddings to Vespa
-4. **Vespa** stores everything and performs hybrid search
-5. **NyRAG** uses an LLM to generate answers from retrieved chunks
-
-**Note:** While Vespa can generate embeddings and call LLMs directly (via HuggingFace embedder and OpenAI components in `services.xml`), this tutorial uses NyRAG to handle those tasks for simplicity. This NyRAG version is optimized for this workflow.
+## technical setup
 
 ```bash
 # Clone the repository
@@ -227,29 +219,12 @@ Now you'll configure your project using the web UI to connect to your Vespa Clou
 
 NyRAG needs an OpenAI-compatible API key so it can generate the final answer after retrieval. If you just want the easiest starting point, OpenRouter works well because it provides access to many models behind a single API.
 
-If you use OpenRouter, your configuration looks like this:
-```yaml
-llm_config:
-  base_url: https://openrouter.ai/api/v1
-  model: meta-llama/llama-3.2-3b-instruct:free
-  api_key: sk-or-v1-...
-```
-
-If you prefer OpenAI directly, the shape is the same:
-```yaml
-llm_config:
-  base_url: https://api.openai.com/v1
-  model: gpt-4o-mini
-  api_key: sk-...
-```
-
-Whichever provider you pick, keep the API key handy; you will paste it into the config editor in the next step.
+Sign up on OpenRouter and obtain an api_key
 
 ---
 
 **Start the NyRAG UI:**
 
-**Quick way (using the provided script):**
 ```bash
 # This script handles all configuration automatically
 ./run_nyrag.sh
