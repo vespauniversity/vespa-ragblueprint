@@ -285,23 +285,55 @@ for hit in response.hits:
 
 ### Via Vespa CLI (Optional - Advanced)
 
-For direct querying without the UI:
+While the NyRAG UI provides an easy interface, you can also query Vespa directly using the Vespa CLI. This gives you more control and is useful for debugging, testing, and automation.
+
+**Install Vespa CLI:**
 
 ```bash
-# Install Vespa CLI (if not already installed)
-brew install vespa-cli  # macOS
-# Or download from: https://github.com/vespa-engine/vespa/releases
+# macOS
+brew install vespa-cli
 
-# Configure Vespa CLI
-vespa config set target cloud
-vespa config set application your-tenant.your-app.your-instance
-vespa auth login
+# Linux, macOS, Windows
+# Download binary from: https://github.com/vespa-engine/vespa/releases
+# Place in your PATH
 
-# Query
-vespa query 'query=What is RAG?'
+# Verify installation
+vespa version
 ```
 
-**Note:** The NyRAG UI is the recommended way to query your data, as it includes LLM-powered answer generation. Use the CLI for debugging, testing, or automation.
+**Configure Vespa CLI:**
+
+```bash
+# Set target to cloud
+vespa config set target cloud
+# Format: <tenant>.<app>.<instance>
+vespa config set application my-tenant.my-app.default
+vespa auth login
+```
+
+**Example Queries:**
+
+```bash
+# Simple text search
+vespa query 'yql=select * from doc where userQuery()' 'query=what is vespa?'
+
+# Hybrid search (text + vector)
+vespa query 'yql=select * from doc where userQuery() or ({targetHits:100}nearestNeighbor(chunk_embeddings,embedding))' 'query=machine learning'
+
+# Query with a specific ranking profile
+vespa query 'query=RAG architecture' 'ranking=second-with-gbdt'
+
+# Compare results with different profiles
+vespa query 'query=RAG architecture' 'ranking=base-features'
+vespa query 'query=RAG architecture' 'ranking=second-with-gbdt'
+
+# Verbose mode (see full HTTP request/response)
+vespa query -v 'query=search query'
+```
+
+**Why use Vespa CLI?** The CLI is optional, but it is handy when you want a direct view of what Vespa returns without the UI and LLM layer in between. It makes it easy to experiment with ranking profiles and query parameters, to debug why a query is (or is not) retrieving the right documents, and to integrate searches into scripts and automation. It is also lower-latency than full chat because it skips answer generation.
+
+**Note:** The NyRAG UI handles all of this for you, plus adds LLM-powered answer generation. The CLI is useful for debugging, testing, and advanced use cases.
 
 ## Ranking Profiles
 

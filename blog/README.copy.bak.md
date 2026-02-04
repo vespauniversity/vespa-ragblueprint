@@ -22,24 +22,10 @@ Vespa Cloud provides an out-of-the-box setup that maximizes the quality of what 
 
 This "Hybrid Search" ensures that the documents sent to the LLM are the absolute best matches for the query, drastically improving the final generated answer.
 
-In this blog, we'll build a complete RAG (Retrieval-Augmented Generation) application. Here is the architecture of what we are building:
+## instead of saying four steps, draw architecture diagram 
+In this blog, we'll build a complete RAG (Retrieval-Augmented Generation) application. By the end, you'll have a Vespa Cloud-backed search service, a small pipeline that turns PDFs (and other sources) into searchable chunks, and a chat UI that answers questions using only your own content.
 
-![Vespa RAG Architecture](img/architecture_diagram.png)
-
-This diagram illustrates the complete RAG application. The process is divided into two main flows: data ingestion and query processing.
-
-**Data Ingestion (One-time setup):**
-First, we feed our data sources (such as documents, PDFs, or websites) into a Python-based ingestion pipeline. This pipeline processes the data, chunks it into manageable pieces, generates embeddings, and then feeds them into our Vespa Cloud application, which is pre-configured with a schema and ranking profiles. This populates our search index.
-
-**Query Flow (Live interaction):**
-1.  A user enters a query into the **Vespa RAG UI**.
-2.  The UI sends the query to the **Python backend**, which in turn sends a hybrid search query (combining keyword and vector search) to **Vespa Cloud**.
-3.  **Vespa Cloud** returns the most relevant document chunks to the backend.
-4.  The backend takes these chunks and, along with the original query, sends them as context to an **OpenAI** model.
-5.  **OpenAI** returns a generated answer based on the provided context to the backend.
-6.  The backend streams the generated answer to the UI for the user to see.
-
-This architecture ensures that the answers are grounded in your data, leveraging the powerful retrieval capabilities of Vespa and the generative power of large language models.
+## put the architecture diagram here. and explain the archtecture diagram
 
 Time required is about 15 minutes for setup, plus however long it takes to process your documents.
 
@@ -86,11 +72,10 @@ Continue through the setup screens, then open the application view.
 
 **Note your endpoint URL**
 
-In the application view you will also find the endpoint URL. It typically looks like `https://[app-id].vespa-cloud.com`. Save both the endpoint and the token; you will need them to configure NyRAG in the next section.
+In the application view you will also find the endpoint URL. It typically looks like `https://[app-id].vespa-cloud.com`. Save both the endpoint and the token; you will use them in Step 3 to connect NyRAG to your deployment.
 
+## explain behind the scenes what happened. a vespa application package has been deployed, in which the default schema and ranking profiles are generated and deployed. 
 ## Behind the Scenes
-
-When you clicked "Deploy", Vespa Cloud automatically provisioned all the necessary infrastructure and deployed a **Vespa Application Package**. This package contains all the configuration for your RAG application, including a pre-defined schema for your documents, a set of powerful ranking profiles for retrieval, and the necessary service definitions. You've essentially launched a ready-to-use, production-grade retrieval engine.
 
 Want to understand what's happening under the hood? Here are the technical details:
 
@@ -186,15 +171,14 @@ The RAG Blueprint includes 6 different ranking profiles, each optimized for diff
 
 > **For Advanced Users:** Want to understand the technical details behind these ranking profiles? Learn about phased ranking architecture, LightGBM model integration, tensor operations, and how Vespa scales ranking to billions of documents. See the comprehensive [Ranking Profiles technical guide](https://github.com/vespauniversity/vespa-ragblueprint#ranking-profiles) in the main README, including GitHub folder structure (`vespa_cloud/schemas/doc/*.profile`) and profile inheritance.
 
-**When to use different profiles:**  In daily use, stick with `base-features` for fast, good-enough results. When you care about squeezing out the best possible relevance, switch to `second-with-gbdt` for that query (it can make a big difference on complex questions). And if you are debugging retrieval, `match-only` is a helpful way to confirm that matches are coming back at all.
-
+**When to use different profiles:** In daily use, stick with `base-features` for fast, good-enough results. When you care about squeezing out the best possible relevance, switch to `second-with-gbdt` for that query (it can make a big difference on complex questions). And if you are debugging retrieval, `match-only` is a helpful way to confirm that matches are coming back at all.
 ---
 
 ## Add front end UI and feeding pipelines
 
 Now let's install the NyRAG tool from the vespa-ragblueprint repository that handles front end UI and feeding pipelines. NyRAG is the glue that reads documents (local files or websites), splits text into chunks, generates embeddings, feeds the results to Vespa, and then exposes a simple chat UI that answers questions using the retrieved chunks as context.
 
-### Technical Setup
+## technical setup
 
 ```bash
 # Clone the repository
@@ -293,7 +277,7 @@ After updating the configuration, you can close the editor (changes are saved au
 
 ---
 
-## Chat with Your Data
+## Step 4: Chat with Your Data
 
 Once processing is complete, use the NyRAG chat interface to ask questions!
 
@@ -345,11 +329,88 @@ Want to create a RAG application from website content instead of local documents
 
 ---
 
+<!--
+## Alternative: Query with Python or CLI
+
+If you prefer coding over the UI, you can query Vespa directly:
+
+**Using Vespa CLI:**
+```bash
+# Install Vespa CLI
+brew install vespa-cli
+
+# Configure to use your cloud deployment
+vespa config set target cloud
+vespa config set application your-tenant.your-app
+
+# Authenticate (one-time setup)
+vespa auth login
+
+# Or use certificate authentication
+vespa auth cert app
+
+# Simple query
+vespa query 'query=What is RAG?'
+
+# Query with custom headers (if using token auth)
+vespa query \
+  --header="Authorization: Bearer your-token-here" \
+  'query=What is RAG?'
+```
+
+**Using Python (pyvespa):**
+```bash
+pip install pyvespa
+```
+
+```python
+from vespa.application import Vespa
+
+# Option 1: Connect with token authentication
+app = Vespa(
+    url="https://your-app.vespa-cloud.com",
+    vespa_cloud_secret_token="your-vespa-cloud-token"  # From Step 1
+)
+
+# Option 2: Connect with certificate authentication
+# app = Vespa(
+#     url="https://your-app.vespa-cloud.com",
+#     cert="/path/to/your/certificate.pem"
+# )
+
+# Option 3: For local deployment (no auth needed)
+# app = Vespa(url="http://localhost:8080")
+
+# Search
+response = app.query(
+    yql="select * from doc where userQuery()",
+    query="What is RAG?",
+    hits=5
+)
+
+# Print results
+for hit in response.hits:
+    print(f"Title: {hit['fields']['title']}")
+    print(f"Chunks: {hit['fields']['chunks'][:2]}")
+    print("---")
+```
+
+**Note:** Use the token you saved in Step 1 for authentication. The token allows secure access to your Vespa Cloud deployment.
+
+---
+-->
+
 ## Troubleshooting
 
 Running into issues? We've got you covered! For detailed troubleshooting guides covering Vespa connection errors, LLM configuration, document processing, and more, see the **[Troubleshooting section](https://github.com/vespauniversity/vespa-ragblueprint#troubleshooting)** in the main README.
 
 **Quick help:** If you get stuck, the fastest path is usually to ask in the [Vespa Slack](http://slack.vespa.ai/) community, where people can help you interpret logs and query behavior. If you think you found a bug or want to request an improvement, open an issue in [GitHub Issues](https://github.com/vespauniversity/vespa-ragblueprint/issues). And when you want deeper background on schema, ranking, and deployment, the [Vespa Docs](https://docs.vespa.ai/) are the canonical reference.
+
+---
+
+
+
+
 
 ---
 
@@ -364,4 +425,81 @@ If you want to go deeper, start with the code in the repository and the Vespa tu
 Next steps: If you want to keep exploring, start with the repository ([vespa-ragblueprint on GitHub](https://github.com/vespauniversity/vespa-ragblueprint)) and compare it with the original NyRAG project ([NyRAG GitHub](https://github.com/vespaai-playground/NyRAG)) to see what is customized for this blueprint. For a deeper conceptual walkthrough, the Vespa docs tutorial is a great follow-on: [RAG Blueprint Tutorial](https://docs.vespa.ai/en/tutorials/rag-blueprint.html). And if you want help or want to share what you built, join the [Vespa Slack](http://slack.vespa.ai/) community; it is the quickest way to get advice on retrieval, ranking, and deployment details.
 
 
+## move this advanced section to the main readme
+**Advanced: Querying with Ranking Profiles via CLI**
+
+If you prefer using the Vespa CLI for direct queries (without the NyRAG UI), you can specify the ranking profile:
+
+```bash
+# Query with specific ranking profile
+vespa query 'query=machine learning' 'ranking=second-with-gbdt'
+
+# Compare results with different profiles
+vespa query 'query=RAG architecture' 'ranking=base-features'
+vespa query 'query=RAG architecture' 'ranking=second-with-gbdt'
+```
+
+See the [Vespa CLI section](#querying-vespa-directly-with-cli-advanced) in "Behind the Scenes" for setup instructions.
+
+---
+
+### Querying Vespa Directly with CLI (Advanced)
+
+While the NyRAG UI provides an easy interface for querying your data, you can also query Vespa directly using the Vespa CLI. This gives you more control and insight into how queries work under the hood.
+
+**Install Vespa CLI:**
+
+```bash
+# macOS
+brew install vespa-cli
+
+# Linux, macOS, Windows
+# Download binary from: https://github.com/vespa-engine/vespa/releases
+# Place in your PATH
+
+# Verify installation
+vespa version
+```
+
+**Configure Vespa CLI for your deployment:**
+
+```bash
+# Set target to cloud
+vespa config set target cloud
+
+# Set your application (from Step 1)
+# Format: <tenant-name>.<application-name>.<instance-name>
+# Example: mytenant.rag-blueprint.default
+vespa config set application <your-tenant>.<your-app>.<your-instance>
+
+# Authenticate with Vespa Cloud
+vespa auth login
+```
+
+**Example queries:**
+
+```bash
+# Simple text search
+vespa query 'yql=select * from doc where userQuery()' \
+  'query=what is vespa?' \
+  'hits=5'
+
+# Hybrid search (text + vector)
+vespa query 'yql=select * from doc where userQuery() or ({targetHits:100}nearestNeighbor(chunk_embeddings,embedding))' \
+  'query=machine learning' \
+  'hits=5'
+
+# With specific rank profile
+vespa query 'yql=select * from doc where userQuery()' \
+  'query=RAG architecture' \
+  'ranking=second-with-gbdt' \
+  'hits=10'
+
+# Verbose mode (see full HTTP request/response)
+vespa query -v 'query=search query'
+```
+
+**Why use Vespa CLI?** The CLI is optional, but it is handy when you want a direct view of what Vespa returns without the UI and LLM layer in between. It makes it easy to experiment with ranking profiles and query parameters, to debug why a query is (or is not) retrieving the right documents, and to integrate searches into scripts and automation. It is also lower-latency than full chat because it skips answer generation.
+
+**Note:** This is optional! The NyRAG UI handles all of this for you, plus adds LLM-powered answer generation. The CLI is useful for debugging, testing, and advanced use cases.
 
