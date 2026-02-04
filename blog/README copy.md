@@ -25,27 +25,23 @@ This "Hybrid Search" ensures that the documents sent to the LLM are the absolute
 ## instead of saying four steps, draw architecture diagram 
 In this blog, we'll build a complete RAG (Retrieval-Augmented Generation) application in just four steps. By the end, you'll have a Vespa Cloud-backed search service, a small pipeline that turns PDFs (and other sources) into searchable chunks, and a chat UI that answers questions using only your own content.
 
-You'll do this with two pieces that are designed to fit together: the Vespa RAG Blueprint (a pre-configured Vespa application that already includes hybrid retrieval and ranking), and NyRAG (a small tool that handles document processing, embeddings, feeding, and the UI).
+## put the architecture diagram here. and explain the archtecture diagram
 
 Time required is about 15 minutes for setup, plus however long it takes to process your documents.
 
-**The 4-Step Process:**  
-![Steps Illustration](img/steps_illustration.png)
-
-
 ---
 
-## Step 1: Deploy Vespa RAG Blueprint to Vespa Cloud
+## Deploy Vespa RAG Blueprint to Vespa Cloud
 
 First, deploy the pre-configured RAG Blueprint to Vespa Cloud (it's free to start). You will do this entirely from the Vespa Cloud console.
 
-**1.1 Sign up for Vespa Cloud**
+**Sign up for Vespa Cloud**
 
 Go to the [Vespa Cloud Console](https://console.vespa-cloud.com/) and create an account. If you have not used Vespa Cloud before, the free trial is a good place to start.
 
 ![image_1](img/image_1.png)
 
-**1.2 Deploy RAG Blueprint**
+**Deploy RAG Blueprint**
 
 In the console, choose **"Deploy your first application"**.
 ![image_2](img/image_2.png)
@@ -60,7 +56,7 @@ Finally, click **"Deploy"** and wait for the deployment to finish.
 ![image_5](img/image_5.png)
 ![image_8](img/image_8.png)
 
-**1.3 Save your credentials**
+**Save your credentials**
 
 When the console shows you a token, save it right away.
 ![image_9](img/image_9.png)
@@ -74,11 +70,11 @@ Continue through the setup screens, then open the application view.
 ![image_13](img/image_13.png)
 ![image_15](img/image_15.png)
 
-**1.4 Note your endpoint URL**
+**Note your endpoint URL**
 
 In the application view you will also find the endpoint URL. It typically looks like `https://[app-id].vespa-cloud.com`. Save both the endpoint and the token; you will use them in Step 3 to connect NyRAG to your deployment.
 
-## explain that a vespa application package has been deployed, in which the default schema and ranking profiles are generated and deployed. 
+## explain behind the scenes what happened. a vespa application package has been deployed, in which the default schema and ranking profiles are generated and deployed. 
 ## Behind the Scenes
 
 Want to understand what's happening under the hood? Here are the technical details:
@@ -159,7 +155,7 @@ schema doc {
 **What's happening here:** Your documents store their raw content in `title` and `text`. At indexing time, `text` is chunked into an array of 1024-character segments, and embeddings are computed for both titles and chunks. Those embeddings are binary-quantized with `pack_bits` so they are much smaller on disk (768 floats become 96 int8 values), while still supporting efficient vector similarity search. On top of that, BM25 is enabled for lexical matching, which is how the blueprint achieves hybrid retrieval.
 
 
-**Available Ranking Profiles:**
+**OOTB Ranking Profiles:**
 
 The RAG Blueprint includes 6 different ranking profiles, each optimized for different trade-offs between speed and quality:
 
@@ -178,9 +174,19 @@ The RAG Blueprint includes 6 different ranking profiles, each optimized for diff
 **When to use different profiles:** In daily use, stick with `base-features` for fast, good-enough results. When you care about squeezing out the best possible relevance, switch to `second-with-gbdt` for that query (it can make a big difference on complex questions). And if you are debugging retrieval, `match-only` is a helpful way to confirm that matches are coming back at all.
 ---
 
-## Step 2: Add front end UI and feeding pipelines
+## Add front end UI and feeding pipelines
 
 Now let's install the NyRAG tool from the vespa-ragblueprint repository that handles front end UI and feeding pipelines. NyRAG is the glue that reads documents (local files or websites), splits text into chunks, generates embeddings, feeds the results to Vespa, and then exposes a simple chat UI that answers questions using the retrieved chunks as context.
+### How Data Flows
+
+**In this setup:**
+1. **NyRAG** reads your documents and generates embeddings (using sentence-transformers)
+2. **NyRAG** chunks text into 1024-character segments
+3. **NyRAG** feeds documents with embeddings to Vespa
+4. **Vespa** stores everything and performs hybrid search
+5. **NyRAG** uses an LLM to generate answers from retrieved chunks
+
+**Note:** While Vespa can generate embeddings and call LLMs directly (via HuggingFace embedder and OpenAI components in `services.xml`), this tutorial uses NyRAG to handle those tasks for simplicity. This NyRAG version is optimized for this workflow.
 
 ```bash
 # Clone the repository
@@ -213,11 +219,11 @@ nyrag --help
 
 ---
 
-## Step 3: Configure Your Project and Process Documents
+## Configure Your Project and Process Documents
 
 Now you'll configure your project using the web UI to connect to your Vespa Cloud deployment and set up document processing.
 
-**3.1 Get an LLM API key**
+**Get an LLM API key**
 
 NyRAG needs an OpenAI-compatible API key so it can generate the final answer after retrieval. If you just want the easiest starting point, OpenRouter works well because it provides access to many models behind a single API.
 
@@ -241,7 +247,7 @@ Whichever provider you pick, keep the API key handy; you will paste it into the 
 
 ---
 
-**3.2 Start the NyRAG UI:**
+**Start the NyRAG UI:**
 
 **Quick way (using the provided script):**
 ```bash
@@ -254,7 +260,7 @@ The `run_nyrag.sh` script starts the UI and wires up the configuration so NyRAG 
 
 Open http://localhost:8000 in your browser.
 
-**3.3 Configure your project:**
+**Configure your project:**
 
 **Step 1: Select and edit the example project**
 
@@ -323,23 +329,6 @@ Want better search results? You can fine-tune how Vespa ranks your documents usi
 
 ---
 
-## move this advanced section to the main readme
-**Advanced: Querying with Ranking Profiles via CLI**
-
-If you prefer using the Vespa CLI for direct queries (without the NyRAG UI), you can specify the ranking profile:
-
-```bash
-# Query with specific ranking profile
-vespa query 'query=machine learning' 'ranking=second-with-gbdt'
-
-# Compare results with different profiles
-vespa query 'query=RAG architecture' 'ranking=base-features'
-vespa query 'query=RAG architecture' 'ranking=second-with-gbdt'
-```
-
-See the [Vespa CLI section](#querying-vespa-directly-with-cli-advanced) in "Behind the Scenes" for setup instructions.
-
----
 
 ### Managing Your Data
 
@@ -445,16 +434,39 @@ Running into issues? We've got you covered! For detailed troubleshooting guides 
 ---
 
 
-### How Data Flows
 
-**In this setup:**
-1. **NyRAG** reads your documents and generates embeddings (using sentence-transformers)
-2. **NyRAG** chunks text into 1024-character segments
-3. **NyRAG** feeds documents with embeddings to Vespa
-4. **Vespa** stores everything and performs hybrid search
-5. **NyRAG** uses an LLM to generate answers from retrieved chunks
 
-**Note:** While Vespa can generate embeddings and call LLMs directly (via HuggingFace embedder and OpenAI components in `services.xml`), this tutorial uses NyRAG to handle those tasks for simplicity. This NyRAG version is optimized for this workflow.
+
+---
+
+## Conclusion
+
+**Congratulations!** You now have a working RAG app: a Vespa Cloud deployment that can retrieve high-quality context, and a small UI that lets you ingest data and chat with it.
+
+The main thing you built is a hybrid retrieval setup that combines vector similarity and BM25 text matching, and then ranks results so the LLM sees the best context you can provide. Once it is set up, keeping it current is simply a matter of re-running indexing when you add new documents.
+
+If you want to go deeper, start with the code in the repository and the Vespa tutorials. When you run into questions, the Vespa Slack community is a great place to ask.
+
+Next steps: If you want to keep exploring, start with the repository ([vespa-ragblueprint on GitHub](https://github.com/vespauniversity/vespa-ragblueprint)) and compare it with the original NyRAG project ([NyRAG GitHub](https://github.com/vespaai-playground/NyRAG)) to see what is customized for this blueprint. For a deeper conceptual walkthrough, the Vespa docs tutorial is a great follow-on: [RAG Blueprint Tutorial](https://docs.vespa.ai/en/tutorials/rag-blueprint.html). And if you want help or want to share what you built, join the [Vespa Slack](http://slack.vespa.ai/) community; it is the quickest way to get advice on retrieval, ranking, and deployment details.
+
+
+## move this advanced section to the main readme
+**Advanced: Querying with Ranking Profiles via CLI**
+
+If you prefer using the Vespa CLI for direct queries (without the NyRAG UI), you can specify the ranking profile:
+
+```bash
+# Query with specific ranking profile
+vespa query 'query=machine learning' 'ranking=second-with-gbdt'
+
+# Compare results with different profiles
+vespa query 'query=RAG architecture' 'ranking=base-features'
+vespa query 'query=RAG architecture' 'ranking=second-with-gbdt'
+```
+
+See the [Vespa CLI section](#querying-vespa-directly-with-cli-advanced) in "Behind the Scenes" for setup instructions.
+
+---
 
 ### Querying Vespa Directly with CLI (Advanced)
 
@@ -516,14 +528,3 @@ vespa query -v 'query=search query'
 
 **Note:** This is optional! The NyRAG UI handles all of this for you, plus adds LLM-powered answer generation. The CLI is useful for debugging, testing, and advanced use cases.
 
----
-
-## Conclusion
-
-**Congratulations!** You now have a working RAG app: a Vespa Cloud deployment that can retrieve high-quality context, and a small UI that lets you ingest data and chat with it.
-
-The main thing you built is a hybrid retrieval setup that combines vector similarity and BM25 text matching, and then ranks results so the LLM sees the best context you can provide. Once it is set up, keeping it current is simply a matter of re-running indexing when you add new documents.
-
-If you want to go deeper, start with the code in the repository and the Vespa tutorials. When you run into questions, the Vespa Slack community is a great place to ask.
-
-Next steps: If you want to keep exploring, start with the repository ([vespa-ragblueprint on GitHub](https://github.com/vespauniversity/vespa-ragblueprint)) and compare it with the original NyRAG project ([NyRAG GitHub](https://github.com/vespaai-playground/NyRAG)) to see what is customized for this blueprint. For a deeper conceptual walkthrough, the Vespa docs tutorial is a great follow-on: [RAG Blueprint Tutorial](https://docs.vespa.ai/en/tutorials/rag-blueprint.html). And if you want help or want to share what you built, join the [Vespa Slack](http://slack.vespa.ai/) community; it is the quickest way to get advice on retrieval, ranking, and deployment details.
