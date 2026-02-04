@@ -506,7 +506,7 @@ vespa query 'yql=select * from doc where userQuery() or ({targetHits:100}nearest
 # With specific rank profile
 vespa query 'yql=select * from doc where userQuery()' \
   'query=RAG architecture' \
-  'ranking=hybrid' \
+  'ranking=second-with-gbdt' \
   'hits=10'
 
 # Verbose mode (see full HTTP request/response)
