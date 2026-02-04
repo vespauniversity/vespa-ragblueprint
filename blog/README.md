@@ -274,7 +274,7 @@ Need to reset or clean up your data? Open the advanced menu (three-dot icon ⋮ 
 
 Want to create a RAG application from website content instead of local documents? NyRAG supports web crawling!
 
-**How to switch to web crawling mode:** Open the configuration editor and select `web_example (web)` from the dropdown at the top. If you are currently on the chat screen, open the three-dot menu (⋮) and choose **"Edit Config"** to bring the editor back. From there, update the same credential fields as you did for `doc_example`, then click **"Start Indexing"** to crawl and feed the site.
+**How to switch to web crawling mode:**  Select `web_example (web)` from the dropdown at the top and open the configuration editor. If you are currently on the chat screen, open the three-dot menu (⋮) and choose **"Edit Config"** to bring the editor back. From there, update the same credential fields as you did for `doc_example`, then click **"Start Indexing"** to crawl and feed the site.
 
 ![Web crawling in progress](img/nyrag_indexing_web_2.png) 
 **Description**: Shows web crawling in progress with terminal logs displaying discovered URLs and processed pages
