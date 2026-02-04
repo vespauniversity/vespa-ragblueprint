@@ -10,7 +10,7 @@ You'll do this with two pieces that are designed to fit together: the Vespa RAG 
 
 Time required is about 15 minutes for setup, plus however long it takes to process your documents.
 
-**The 4-Step Process:**
+**The 4-Step Process:**  
 ![Steps Illustration](img/steps_illustration.png)
 
 ## What is RAG?
