@@ -23,7 +23,7 @@ Vespa Cloud provides an out-of-the-box setup that maximizes the quality of what 
 This "Hybrid Search" ensures that the documents sent to the LLM are the absolute best matches for the query, drastically improving the final generated answer.
 
 ## instead of saying four steps, draw architecture diagram 
-In this blog, we'll build a complete RAG (Retrieval-Augmented Generation) application in just four steps. By the end, you'll have a Vespa Cloud-backed search service, a small pipeline that turns PDFs (and other sources) into searchable chunks, and a chat UI that answers questions using only your own content.
+In this blog, we'll build a complete RAG (Retrieval-Augmented Generation) application. By the end, you'll have a Vespa Cloud-backed search service, a small pipeline that turns PDFs (and other sources) into searchable chunks, and a chat UI that answers questions using only your own content.
 
 ## put the architecture diagram here. and explain the archtecture diagram
 
