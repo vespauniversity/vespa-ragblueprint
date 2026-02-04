@@ -319,7 +319,7 @@ The RAG Blueprint includes 6 different ranking profiles, each optimized for diff
 3. Click **"Save"**
 4. Your next query will use the new profile!
 
-![Settings modal with ranking profile dropdown](img/nyrag_settings_ranking_profiles.png)
+![Settings modal with ranking profile dropdown](img/nyrag_settings_ranking_profiles.png)  
 **Description**: Settings modal showing ranking profile selection dropdown with 6 available options
 
 **Pro tip**: The quality difference between `base-features` and `second-with-gbdt` can be dramatic for complex queries. Try both and see which works best for your use case!
