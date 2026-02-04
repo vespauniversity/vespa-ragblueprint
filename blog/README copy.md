@@ -4,16 +4,6 @@
 
 ![nyrag_ui](img/nyrag_ui.png)
 
-In this tutorial, you'll build a complete RAG (Retrieval-Augmented Generation) application in just four steps. By the end, you'll have a Vespa Cloud-backed search service, a small pipeline that turns PDFs (and other sources) into searchable chunks, and a chat UI that answers questions using only your own content.
-
-You'll do this with two pieces that are designed to fit together: the Vespa RAG Blueprint (a pre-configured Vespa application that already includes hybrid retrieval and ranking), and NyRAG (a small tool that handles document processing, embeddings, feeding, and the UI).
-
-Time required is about 15 minutes for setup, plus however long it takes to process your documents.
-
-**The 4-Step Process:**  
-![Steps Illustration](img/steps_illustration.png)
-
-## What is RAG?
 
 Retrieval-Augmented Generation (RAG) is the pattern where you give an LLM (Large Language Model) controlled access to your own data at question time. LLMs are powerful, but on their own they can hallucinate, they have a knowledge cutoff, and they certainly do not know anything about your private documents, internal wikis, or company data.
 
@@ -31,6 +21,17 @@ The challenge, therefore, is not just *finding* data, but finding the *most rele
 Vespa Cloud provides an out-of-the-box setup that maximizes the quality of what you send to the LLM. Instead of relying on only nearest-neighbor vector search, Vespa combines semantic vector retrieval with lexical BM25 matching, and then applies advanced ranking (for example BERT, LightGBM, or custom logic) so the chunks you send to the model are the best candidates you have.
 
 This "Hybrid Search" ensures that the documents sent to the LLM are the absolute best matches for the query, drastically improving the final generated answer.
+
+## instead of saying four steps, draw architecture diagram 
+In this blog, we'll build a complete RAG (Retrieval-Augmented Generation) application in just four steps. By the end, you'll have a Vespa Cloud-backed search service, a small pipeline that turns PDFs (and other sources) into searchable chunks, and a chat UI that answers questions using only your own content.
+
+You'll do this with two pieces that are designed to fit together: the Vespa RAG Blueprint (a pre-configured Vespa application that already includes hybrid retrieval and ranking), and NyRAG (a small tool that handles document processing, embeddings, feeding, and the UI).
+
+Time required is about 15 minutes for setup, plus however long it takes to process your documents.
+
+**The 4-Step Process:**  
+![Steps Illustration](img/steps_illustration.png)
+
 
 ---
 
@@ -77,11 +78,109 @@ Continue through the setup screens, then open the application view.
 
 In the application view you will also find the endpoint URL. It typically looks like `https://[app-id].vespa-cloud.com`. Save both the endpoint and the token; you will use them in Step 3 to connect NyRAG to your deployment.
 
+## explain that a vespa application package has been deployed, in which the default schema and ranking profiles are generated and deployed. 
+## Behind the Scenes
+
+Want to understand what's happening under the hood? Here are the technical details:
+
+### The Schema
+
+The RAG Blueprint uses a carefully designed schema that defines how your documents are stored and searched:
+
+`vespa_cloud/schemas/doc.sd`:
+
+```java
+schema doc {
+    document doc {
+        field id type string {
+            indexing: summary | attribute
+        }
+        field title type string {
+            indexing: index | summary
+            index: enable-bm25
+        }
+        field text type string {
+        }
+
+        # Optional metadata fields for tracking document usage
+        field created_timestamp type long {
+            indexing: attribute | summary
+        }
+        field modified_timestamp type long {
+            indexing: attribute | summary
+        }
+        field last_opened_timestamp type long {
+            indexing: attribute | summary
+        }
+        field open_count type int {
+            indexing: attribute | summary
+        }
+        field favorite type bool {
+            indexing: attribute | summary
+        }
+    }
+
+    # Binary quantized embeddings for the title (768 floats → 96 int8)
+    field title_embedding type tensor<int8>(x[96]) {
+        indexing: input title | embed | pack_bits | attribute | index
+        attribute {
+            distance-metric: hamming
+        }
+    }
+
+    # Automatically chunks text into 1024-character segments
+    field chunks type array<string> {
+        indexing: input text | chunk fixed-length 1024 | summary | index
+        index: enable-bm25
+    }
+
+    # Binary quantized embeddings for each chunk
+    field chunk_embeddings type tensor<int8>(chunk{}, x[96]) {
+        indexing: input text | chunk fixed-length 1024 | embed | pack_bits | attribute | index
+        attribute {
+            distance-metric: hamming
+        }
+    }
+
+    fieldset default {
+        fields: title, chunks
+    }
+
+    document-summary top_3_chunks {
+        from-disk
+        summary chunks_top3 {
+            source: chunks
+            select-elements-by: top_3_chunk_sim_scores
+        }
+    }
+}
+```
+
+**What's happening here:** Your documents store their raw content in `title` and `text`. At indexing time, `text` is chunked into an array of 1024-character segments, and embeddings are computed for both titles and chunks. Those embeddings are binary-quantized with `pack_bits` so they are much smaller on disk (768 floats become 96 int8 values), while still supporting efficient vector similarity search. On top of that, BM25 is enabled for lexical matching, which is how the blueprint achieves hybrid retrieval.
+
+
+**Available Ranking Profiles:**
+
+The RAG Blueprint includes 6 different ranking profiles, each optimized for different trade-offs between speed and quality:
+
+1. **base-features** (default, fast). This profile keeps things simple: it blends BM25 text matching with vector similarity and is usually the best choice while you are getting started. It is also a good everyday profile when you want quick answers and reasonable relevance.
+
+2. **learned-linear** (linear model). This profile adds a light learned model (logistic regression) on top of the base features. It is a nice middle ground when you want a quality bump without paying the full cost of heavier second-phase ranking.
+
+3. **second-with-gbdt** (GBDT, best quality). This profile uses a LightGBM gradient boosting model in a second phase. It tends to give the best ranking quality, especially for harder queries, but it is slower than the simpler profiles.
+
+4. **match-only** (no ranking, fastest). This profile is primarily a debugging tool: it returns matches without doing much ranking work. If you are trying to verify that retrieval works at all, this is a useful baseline.
+
+5. **collect-training-data** and **collect-second-phase** (training). These profiles are meant for advanced workflows where you collect signals and training data to build or tune your own ranking models.
+
+> **For Advanced Users:** Want to understand the technical details behind these ranking profiles? Learn about phased ranking architecture, LightGBM model integration, tensor operations, and how Vespa scales ranking to billions of documents. See the comprehensive [Ranking Profiles technical guide](https://github.com/vespauniversity/vespa-ragblueprint#ranking-profiles) in the main README, including GitHub folder structure (`vespa_cloud/schemas/doc/*.profile`) and profile inheritance.
+
+**When to use different profiles:** In daily use, stick with `base-features` for fast, good-enough results. When you care about squeezing out the best possible relevance, switch to `second-with-gbdt` for that query (it can make a big difference on complex questions). And if you are debugging retrieval, `match-only` is a helpful way to confirm that matches are coming back at all.
 ---
 
-## Step 2: Install NyRAG
+## Step 2: Add front end UI and feeding pipelines
 
-Now install the NyRAG tool from the vespa-ragblueprint repository:
+Now let's install the NyRAG tool from the vespa-ragblueprint repository that handles front end UI and feeding pipelines. NyRAG is the glue that reads documents (local files or websites), splits text into chunks, generates embeddings, feeds the results to Vespa, and then exposes a simple chat UI that answers questions using the retrieved chunks as context.
 
 ```bash
 # Clone the repository
@@ -111,13 +210,6 @@ uv pip install -e .
 nyrag --help
 ```
 
-**What is NyRAG?**
-
-NyRAG is the glue for this tutorial. It reads documents (local files or websites), splits text into chunks, generates embeddings, feeds the results to Vespa, and then exposes a simple chat UI that answers questions using the retrieved chunks as context.
-
-This version is optimized to work with the Vespa RAG Blueprint schema.
-
-**Tip:** The repository includes a `run_nyrag.sh` script that makes it easy to start NyRAG with your Vespa Cloud deployment!
 
 ---
 
@@ -220,23 +312,7 @@ If you want a quick sanity check, ask something broad ("What are the main topics
 
 Want better search results? You can fine-tune how Vespa ranks your documents using the Settings modal (⚙️ icon in the top right).
 
-**Available Ranking Profiles:**
 
-The RAG Blueprint includes 6 different ranking profiles, each optimized for different trade-offs between speed and quality:
-
-1. **base-features** (default, fast). This profile keeps things simple: it blends BM25 text matching with vector similarity and is usually the best choice while you are getting started. It is also a good everyday profile when you want quick answers and reasonable relevance.
-
-2. **learned-linear** (linear model). This profile adds a light learned model (logistic regression) on top of the base features. It is a nice middle ground when you want a quality bump without paying the full cost of heavier second-phase ranking.
-
-3. **second-with-gbdt** (GBDT, best quality). This profile uses a LightGBM gradient boosting model in a second phase. It tends to give the best ranking quality, especially for harder queries, but it is slower than the simpler profiles.
-
-4. **match-only** (no ranking, fastest). This profile is primarily a debugging tool: it returns matches without doing much ranking work. If you are trying to verify that retrieval works at all, this is a useful baseline.
-
-5. **collect-training-data** and **collect-second-phase** (training). These profiles are meant for advanced workflows where you collect signals and training data to build or tune your own ranking models.
-
-> **For Advanced Users:** Want to understand the technical details behind these ranking profiles? Learn about phased ranking architecture, LightGBM model integration, tensor operations, and how Vespa scales ranking to billions of documents. See the comprehensive [Ranking Profiles technical guide](https://github.com/vespauniversity/vespa-ragblueprint#ranking-profiles) in the main README, including GitHub folder structure (`vespa_cloud/schemas/doc/*.profile`) and profile inheritance.
-
-**When to use different profiles:** In daily use, stick with `base-features` for fast, good-enough results. When you care about squeezing out the best possible relevance, switch to `second-with-gbdt` for that query (it can make a big difference on complex questions). And if you are debugging retrieval, `match-only` is a helpful way to confirm that matches are coming back at all.
 
 **How to change ranking profiles:** Open the ⚙️ **Settings** panel, choose a **Ranking Profile** from the dropdown, and click **"Save"**. The very next query you run will use the new profile.
 
@@ -247,6 +323,7 @@ The RAG Blueprint includes 6 different ranking profiles, each optimized for diff
 
 ---
 
+## move this advanced section to the main readme
 **Advanced: Querying with Ranking Profiles via CLI**
 
 If you prefer using the Vespa CLI for direct queries (without the NyRAG UI), you can specify the ranking profile:
@@ -367,84 +444,6 @@ Running into issues? We've got you covered! For detailed troubleshooting guides 
 
 ---
 
-## Behind the Scenes
-
-Want to understand what's happening under the hood? Here are the technical details:
-
-### The Schema
-
-The RAG Blueprint uses a carefully designed schema that defines how your documents are stored and searched:
-
-`vespa_cloud/schemas/doc.sd`:
-
-```java
-schema doc {
-    document doc {
-        field id type string {
-            indexing: summary | attribute
-        }
-        field title type string {
-            indexing: index | summary
-            index: enable-bm25
-        }
-        field text type string {
-        }
-
-        # Optional metadata fields for tracking document usage
-        field created_timestamp type long {
-            indexing: attribute | summary
-        }
-        field modified_timestamp type long {
-            indexing: attribute | summary
-        }
-        field last_opened_timestamp type long {
-            indexing: attribute | summary
-        }
-        field open_count type int {
-            indexing: attribute | summary
-        }
-        field favorite type bool {
-            indexing: attribute | summary
-        }
-    }
-
-    # Binary quantized embeddings for the title (768 floats → 96 int8)
-    field title_embedding type tensor<int8>(x[96]) {
-        indexing: input title | embed | pack_bits | attribute | index
-        attribute {
-            distance-metric: hamming
-        }
-    }
-
-    # Automatically chunks text into 1024-character segments
-    field chunks type array<string> {
-        indexing: input text | chunk fixed-length 1024 | summary | index
-        index: enable-bm25
-    }
-
-    # Binary quantized embeddings for each chunk
-    field chunk_embeddings type tensor<int8>(chunk{}, x[96]) {
-        indexing: input text | chunk fixed-length 1024 | embed | pack_bits | attribute | index
-        attribute {
-            distance-metric: hamming
-        }
-    }
-
-    fieldset default {
-        fields: title, chunks
-    }
-
-    document-summary top_3_chunks {
-        from-disk
-        summary chunks_top3 {
-            source: chunks
-            select-elements-by: top_3_chunk_sim_scores
-        }
-    }
-}
-```
-
-**What's happening here:** Your documents store their raw content in `title` and `text`. At indexing time, `text` is chunked into an array of 1024-character segments, and embeddings are computed for both titles and chunks. Those embeddings are binary-quantized with `pack_bits` so they are much smaller on disk (768 floats become 96 int8 values), while still supporting efficient vector similarity search. On top of that, BM25 is enabled for lexical matching, which is how the blueprint achieves hybrid retrieval.
 
 ### How Data Flows
 
