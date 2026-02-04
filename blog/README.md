@@ -266,7 +266,7 @@ See the [Vespa CLI section](#querying-vespa-directly-with-cli-advanced) in "Behi
 
 ### Managing Your Data
 
-Need to reset or clean up your data? Open the advanced menu (three-dot icon ⋮ in the top right) and you will find two cleanup actions. **Clear Local Cache** removes cached files for all projects on your machine, which is useful when you want to re-process from scratch locally. **Clear Vespa Data** deletes the indexed documents in Vespa for the currently selected project, which is useful when you want a clean index before re-feeding. Both actions ask for confirmation so you do not delete data by accident.
+Need to reset or clean up your data? Open the advanced menu (three-dot icon ⋮ in the top right) and you will find two cleanup actions. **Clear Local Cache** removes cached files for all projects on your machine, which is useful when you want to re-process from scratch locally. **Clear Vespa Data** deletes the indexed documents in Vespa for the project, which is useful when you want a clean index before re-feeding. Both actions ask for confirmation so you do not delete data by accident.
 
 ---
 
