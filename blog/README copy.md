@@ -219,7 +219,7 @@ Now you'll configure your project using the web UI to connect to your Vespa Clou
 
 NyRAG needs an OpenAI-compatible API key so it can generate the final answer after retrieval. If you just want the easiest starting point, OpenRouter works well because it provides access to many models behind a single API.
 
-Sign up on OpenRouter and obtain an api_key
+In this blog, we will use OpenRouter. Feel free to change it to your flavors of LLM in your real application. To continue with the technical setup, please sign up on OpenRouter and obtain an api_key. 
 
 ---
 
