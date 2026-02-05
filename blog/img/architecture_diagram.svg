@@ -7,6 +7,9 @@
    id="svg15"
    sodipodi:docname="architecture_diagram.svg"
    inkscape:version="1.4 (e7c3feb100, 2024-10-09)"
+   inkscape:export-filename="architecture_diagram.png"
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
@@ -28,7 +31,7 @@
      inkscape:window-x="0"
      inkscape:window-y="0"
      inkscape:window-maximized="1"
-     inkscape:current-layer="svg15" />
+     inkscape:current-layer="g6" />
   <defs
      id="defs1">
     <inkscape:path-effect
@@ -211,7 +214,7 @@
      transform="matrix(1.3903373,0,0,1.2802195,127.9144,-83.94771)">
     <path
        class="cloud"
-       d="m 41.61944,385.44676 c -20.01992,-24.41311 5.43061,-45.04726 32.00466,-33.27867 9.65241,-28.04401 87.57038,-23.24939 96.72909,-0.87175 26.57406,-12.64034 61.40473,14.9678 41.3848,39.38091 19.52625,27.60812 -16.29181,50.42164 -39.90372,32.98669 -12.7507,21.5059 -90.66866,27.17225 -100.81476,0 -24.59929,10.89684 -58.44257,-16.27541 -29.40007,-38.21718 z"
+       d="m 36.550976,385.44844 c -22.097848,-24.39201 5.99427,-45.00833 35.326521,-33.24991 10.654264,-28.01977 96.659583,-23.22929 106.768903,-0.87099 29.33226,-12.62942 67.77811,14.95486 45.68025,39.34687 21.55294,27.58425 -17.98279,50.37806 -44.04545,32.95817 -14.07413,21.48732 -100.079436,27.14877 -111.278631,0 C 41.850044,434.52001 4.4940663,407.37125 36.550976,385.44844 Z"
        style="fill:#e3f2fd;stroke:#1976d2"
        id="path3"
        sodipodi:nodetypes="ccccccc" />
@@ -224,7 +227,7 @@
        x="127.78538"
        y="391.97089"
        class="small-text"
-       id="text5">Vespa RAG Application</text>
+       id="text5">Vespa RAG Blueprint Application</text>
     <text
        x="131.0323"
        y="405.36401"
