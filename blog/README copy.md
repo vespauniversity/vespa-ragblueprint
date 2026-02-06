@@ -217,6 +217,10 @@ uv --version
 uv sync
 source .venv/bin/activate
 
+# Windows (PowerShell)
+# powershell -ExecutionPolicy Bypass
+# . .\.venv\Scripts\activate
+
 # Install nyrag locally
 uv pip install -e .
 
