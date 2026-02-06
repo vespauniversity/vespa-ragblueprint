@@ -248,6 +248,10 @@ In this blog, we will use OpenRouter. Feel free to change it to your flavors of 
 ```bash
 # This script handles all configuration automatically
 ./run_nyrag.sh
+
+# Windows (PowerShell)
+# powershell -ExecutionPolicy Bypass
+.\run_nyrag.ps1
 ```
 
 The `run_nyrag.sh` script starts the UI and wires up the configuration so NyRAG can talk to Vespa Cloud. In practice, it loads your project config, uses the token you provide for authentication, and starts the web UI on port 8000.
