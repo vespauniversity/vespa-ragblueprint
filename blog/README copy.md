@@ -20,7 +20,7 @@ High-quality RAG depends on semantic understanding, precise retrieval, and stron
 
 ## The Solution: Out-of-the-Box RAG on Vespa Cloud
 
-Vespa Cloud provides an out-of-the-box Vespa RAG Blueprint app designed to maximize the quality of the context sent to the LLM. Instead of relying solely on nearest-neighbor vector search, Vespa combines semantic vector retrieval with lexical BM25 matching and applies advanced ranking, using models such as BERT, LightGBM, or custom logic—to ensure that only the strongest candidates are selected.
+Vespa Cloud provides an out-of-the-box Vespa RAG Blueprint designed to maximize the quality of the context sent to the LLM. Instead of relying solely on nearest-neighbor vector search, Vespa combines semantic vector retrieval with lexical BM25 matching and applies advanced ranking, using models such as BERT, LightGBM, or custom logic—to ensure that only the strongest candidates are selected.
 
 This hybrid retrieval and ranking approach consistently surfaces the most relevant document chunks, which significantly improves the quality of the final generated answer.
 
@@ -39,7 +39,7 @@ First, we ingest our data sources, such as documents, PDFs, or web pages by usin
 1. A user enters a question in the **Vespa RAG UI**.
 
 2. The UI sends the query to a **Python backend**, which issues a hybrid search request (combining keyword and vector retrieval) to **Vespa Cloud**.
-I 
+
 3. **Vespa Cloud** returns the most relevant document chunks.
 
 4. The backend sends those chunks, along with the original query, to a **LLM** as context.
@@ -56,37 +56,37 @@ The end-to-end setup takes about 15 minutes, plus additional time to process you
 
 ## Deploy Vespa RAG Blueprint to Vespa Cloud
 
-First, deploy the pre-configured RAG Blueprint to Vespa Cloud (it's free to start). You will do this entirely from the Vespa Cloud console.
+We’ll start by deploying a preconfigured RAG Blueprint to Vespa Cloud. This gives you a high-quality retrieval stack in minutes, and it’s free to get started. All of this is done directly from the Vespa Cloud console.
 
 **Sign up for Vespa Cloud**
 
-Go to the [Vespa Cloud Console](https://console.vespa-cloud.com/) and create an account. If you have not used Vespa Cloud before, the free trial is a good place to start.
+Go to the [Vespa Cloud Console](https://console.vespa-cloud.com/) and create an account. If this is your first time using Vespa Cloud, the free trial is the fastest way to get going.
 
 ![image_1](img/image_1.png)
 
 **Deploy RAG Blueprint**
 
-In the console, choose **"Deploy your first application"**.
+In the console, select **"Deploy your first application"**.
 ![image_2](img/image_2.png)
 
-Pick **"Select a sample application to deploy directly from the browser"**.
+Choose **"Select a sample application to deploy directly from the browser"**.
 ![image_3](img/image_3.png)
 
 Select **"RAG Blueprint"**.
 ![image_4](img/image_4.png)
 
-Finally, click **"Deploy"** and wait for the deployment to finish.
+Click **"Deploy"** and wait for the deployment to complete.
 ![image_5](img/image_5.png)
 ![image_8](img/image_8.png)
 
 **Save your credentials**
 
-When the console shows you a token, save it right away.
+Once deployment finishes, the console will generate an access token. **Save this immediately.**
 ![image_9](img/image_9.png)
 
-That token is how NyRAG will authenticate to your Vespa Cloud endpoint. Treat it like a password.
+That token is how Python backend authenticates with Vespa Cloud. Treat it like a password.
 
-Continue through the setup screens, then open the application view.
+Continue through the remaining setup screens, then open the application view.
 ![image_10](img/image_10.png)
 ![image_11](img/image_11.png)
 ![image_12](img/image_12.png)
@@ -95,17 +95,19 @@ Continue through the setup screens, then open the application view.
 
 **Note your endpoint URL**
 
-In the application view you will also find the endpoint URL. It typically looks like `https://[app-id].vespa-cloud.com`. Save both the endpoint and the token; you will need them to configure NyRAG in the next section.
+In the application view you will also find the endpoint URL. It typically looks like `https://[app-id].vespa-cloud.com`. Save both the **endpoint URL** and the token; you will need them to configure Python backend in the next section.
 
-## Behind the Scenes
+## Behind the Scenes: What You Just Deployed
 
-When you clicked "Deploy", Vespa Cloud automatically provisioned all the necessary infrastructure and deployed a **Vespa Application Package**. This package contains all the configuration for your RAG application, including a pre-defined schema for your documents, a set of powerful ranking profiles for retrieval, and the necessary service definitions. You've essentially launched a ready-to-use, production-grade retrieval engine.
+When you clicked **Deploy**, Vespa Cloud automatically provisioned infrastructure and deployed a complete **Vespa application package**. This package includes everything needed for a high-quality RAG system: schemas, indexing logic, ranking profiles, and service configuration.
 
-Want to understand what's happening under the hood? Here are the technical details:
+In other words, you didn’t just spin up a demo, you launched a ready-to-use, high-quality retrieval engine.
+
+Let’s take a closer look at what’s inside.
 
 ### The Schema
 
-The RAG Blueprint uses a carefully designed schema that defines how your documents are stored and searched:
+The RAG Blueprint uses a carefully designed schema that controls how documents are stored, chunked, embedded, and retrieved:
 
 `vespa_cloud/schemas/doc.sd`:
 
@@ -176,26 +178,34 @@ schema doc {
 }
 ```
 
-**What's happening here:** Your documents store their raw content in `title` and `text`. At indexing time, `text` is chunked into an array of 1024-character segments, and embeddings are computed for both titles and chunks. Those embeddings are binary-quantized with `pack_bits` so they are much smaller on disk (768 floats become 96 int8 values), while still supporting efficient vector similarity search. On top of that, BM25 is enabled for lexical matching, which is how the blueprint achieves hybrid retrieval.
+**What's happening here:** Your documents store their raw content in `title` and `text`. During indexing, the `text` field automatically split into 1024-character chunks. Embeddings are generated for both titles and chunks, then binary-quantized using `pack_bits`, shrinking 768 floating-point values down to just 96 `int8`s. This dramatically reduces storage and improves performance while still supporting efficient vector similarity search.
+
+At the same time, BM25 is enabled for lexical matching. This combination is what enables Vespa’s hybrid retrieval: semantic matching plus exact term relevance.
 
 
-**OOTB Ranking Profiles:**
+**Out-of-the-Box Ranking Profiles:**
 
-The RAG Blueprint includes 6 different ranking profiles, each optimized for different trade-offs between speed and quality:
+The RAG Blueprint ships with six ranking profiles, covering a range of speed-versus-quality trade-offs:
 
-1. **base-features** (default, fast). This profile keeps things simple: it blends BM25 text matching with vector similarity and is usually the best choice while you are getting started. It is also a good everyday profile when you want quick answers and reasonable relevance.
+1. **base-features** (default, fast)
+   Blends BM25 text matching with vector similarity. This is the best place to start and a solid everyday choice when you want fast responses with good relevance.
 
-2. **learned-linear** (linear model). This profile adds a light learned model (logistic regression) on top of the base features. It is a nice middle ground when you want a quality bump without paying the full cost of heavier second-phase ranking.
+2. **learned-linear** (lightweight learned model).
+   Adds a simple logistic regression model on top of the base features. It offers a quality boost without the cost of heavier second-phase ranking.
+   
+3. **second-with-gbdt** (highest quality)
+   Uses a LightGBM model in a second ranking phase. This profile typically delivers the best results on complex queries, at the cost of additional latency.
 
-3. **second-with-gbdt** (GBDT, best quality). This profile uses a LightGBM gradient boosting model in a second phase. It tends to give the best ranking quality, especially for harder queries, but it is slower than the simpler profiles.
-
-4. **match-only** (no ranking, fastest). This profile is primarily a debugging tool: it returns matches without doing much ranking work. If you are trying to verify that retrieval works at all, this is a useful baseline.
-
-5. **collect-training-data** and **collect-second-phase** (training). These profiles are meant for advanced workflows where you collect signals and training data to build or tune your own ranking models.
+4. **match-only** (no ranking, fastest).
+   Primarily useful for debugging. It confirms that retrieval works without applying ranking logic.
+   
+5. **collect-training-data** and 6. **collect-second-phase** (training workflows)
+   Designed for advanced setups where you collect signals to train or tune custom ranking models.
 
 > **For Advanced Users:** Want to understand the technical details behind these ranking profiles? Learn about phased ranking architecture, LightGBM model integration, tensor operations, and how Vespa scales ranking to billions of documents. See the comprehensive [Ranking Profiles technical guide](https://github.com/vespauniversity/vespa-ragblueprint#ranking-profiles) in the main README, including GitHub folder structure (`vespa_cloud/schemas/doc/*.profile`) and profile inheritance.
 
-**When to use different profiles:**  In daily use, stick with `base-features` for fast, good-enough results. When you care about squeezing out the best possible relevance, switch to `second-with-gbdt` for that query (it can make a big difference on complex questions). And if you are debugging retrieval, `match-only` is a helpful way to confirm that matches are coming back at all.
+**Which profile should you use?**  
+Start with `base-features` for fast, solid results. Switch to `second-with-gbdt` when relevance really matters. It can make a noticeable difference on harder questions. And when debugging retrieval, `match-only` is the quickest way to verify that documents are being matched at all.
 
 ---
 
