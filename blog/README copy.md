@@ -20,7 +20,7 @@ High-quality RAG depends on semantic understanding, precise retrieval, and stron
 
 ## The Solution: Out-of-the-Box RAG on Vespa Cloud
 
-Vespa Cloud provides an out-of-the-box setup designed to maximize the quality of the context sent to the LLM. Instead of relying solely on nearest-neighbor vector search, Vespa combines semantic vector retrieval with lexical BM25 matching and applies advanced ranking, using models such as BERT, LightGBM, or custom logic—to ensure that only the strongest candidates are selected.
+Vespa Cloud provides an out-of-the-box Vespa RAG Blueprint app designed to maximize the quality of the context sent to the LLM. Instead of relying solely on nearest-neighbor vector search, Vespa combines semantic vector retrieval with lexical BM25 matching and applies advanced ranking, using models such as BERT, LightGBM, or custom logic—to ensure that only the strongest candidates are selected.
 
 This hybrid retrieval and ranking approach consistently surfaces the most relevant document chunks, which significantly improves the quality of the final generated answer.
 
@@ -42,7 +42,7 @@ First, we ingest our data sources, such as documents, PDFs, or web pages by usin
 I 
 3. **Vespa Cloud** returns the most relevant document chunks.
 
-4. The backend sends those chunks, along with the original query, to a **LLM model** as context.
+4. The backend sends those chunks, along with the original query, to a **LLM** as context.
 
 5. The model generates an answer grounded in that context and returns it to the backend.
 
