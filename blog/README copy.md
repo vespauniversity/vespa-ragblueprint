@@ -18,32 +18,39 @@ High-quality RAG depends on semantic understanding, precise retrieval, and stron
 
 ![illustration_2](img/illustration_2.png)
 
-## The Solution: Vespa Out-of-the-Box RAG on Vespa Cloud
+## The Solution: Out-of-the-Box RAG on Vespa Cloud
 
-Vespa Cloud provides an out-of-the-box setup that maximizes the quality of what you send to the LLM. Instead of relying on only nearest-neighbor vector search, Vespa combines semantic vector retrieval with lexical BM25 matching, and then applies advanced ranking (for example BERT, LightGBM, or custom logic) so the chunks you send to the model are the best candidates you have.
+Vespa Cloud provides an out-of-the-box setup designed to maximize the quality of the context sent to the LLM. Instead of relying solely on nearest-neighbor vector search, Vespa combines semantic vector retrieval with lexical BM25 matching and applies advanced ranking, using models such as BERT, LightGBM, or custom logic—to ensure that only the strongest candidates are selected.
 
-This "Hybrid Search" ensures that the documents sent to the LLM are the absolute best matches for the query, drastically improving the final generated answer.
+This hybrid retrieval and ranking approach consistently surfaces the most relevant document chunks, which significantly improves the quality of the final generated answer.
 
-In this blog, we'll build a complete RAG (Retrieval-Augmented Generation) application. Here is the architecture of what we are building:
+In this blog post, we’ll build a complete Retrieval-Augmented Generation (RAG) application from end to end by leveraging the OOTB Vespa RAG app on Vespa cloud. The following diagram shows the architecture we’ll be working with:
 
 ![Vespa RAG Architecture](img/architecture_diagram.png)
 
-This diagram illustrates the complete RAG application. The process is divided into two main flows: data ingestion and query processing.
+The architecture consists of two main flows: data ingestion and query processing.
 
-**Data Ingestion (One-time setup):**
-First, we feed our data sources (such as documents, PDFs, or websites) into a Python-based ingestion pipeline. This pipeline processes the data, chunks it into manageable pieces, generates embeddings, and then feeds them into our Vespa Cloud application, which is pre-configured with a schema and ranking profiles. This populates our search index.
+**Data Ingestion (one-time setup)**
 
-**Query Flow (Live interaction):**
-1.  A user enters a query into the **Vespa RAG UI**.
-2.  The UI sends the query to the **Python backend**, which in turn sends a hybrid search query (combining keyword and vector search) to **Vespa Cloud**.
-3.  **Vespa Cloud** returns the most relevant document chunks to the backend.
-4.  The backend takes these chunks and, along with the original query, sends them as context to an **OpenAI** model.
-5.  **OpenAI** returns a generated answer based on the provided context to the backend.
-6.  The backend streams the generated answer to the UI for the user to see.
+First, we ingest our data sources, such as documents, PDFs, or web pages by using a Python-based pipeline. The pipeline processes the data, splits it into manageable chunks, generates embeddings, and feeds everything into a Vespa Cloud RAG application that is preconfigured with a schema and ranking profiles. This step populates the search index.
 
-This architecture ensures that the answers are grounded in your data, leveraging the powerful retrieval capabilities of Vespa and the generative power of large language models.
+**Query Flow (live interaction)**
 
-Time required is about 15 minutes for setup, plus however long it takes to process your documents.
+1. A user enters a question in the **Vespa RAG UI**.
+
+2. The UI sends the query to a **Python backend**, which issues a hybrid search request (combining keyword and vector retrieval) to **Vespa Cloud**.
+I 
+3. **Vespa Cloud** returns the most relevant document chunks.
+
+4. The backend sends those chunks, along with the original query, to a **LLM model** as context.
+
+5. The model generates an answer grounded in that context and returns it to the backend.
+
+6. The backend streams the answer back to the UI.
+
+This architecture ensures that generated responses are grounded in your own data, combining Vespa’s retrieval and ranking strengths with the generative capabilities of large language models.
+
+The end-to-end setup takes about 15 minutes, plus additional time to process your documents.
 
 ---
 
