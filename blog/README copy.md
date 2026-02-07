@@ -1,18 +1,20 @@
 # Build a High-Quality RAG App on Vespa Cloud in 15 Minutes
 
-*From Zero to RAG: A Simple Step-by-Step Tutorial*
+*From Zero to RAG: A Step-by-Step Tutorial*
 
-![nyrag_ui](img/nyrag_ui.png)
+**Retrieval-Augmented Generation (RAG)** allows an LLM to answer questions using your data at query time.
 
+On their own, LLMs are powerful but limited: they can hallucinate, they have a fixed knowledge cutoff, and they know nothing about your private documents, internal wikis, or proprietary systems.
 
-Retrieval-Augmented Generation (RAG) is the pattern where you give an LLM (Large Language Model) controlled access to your own data at question time. LLMs are powerful, but on their own they can hallucinate, they have a knowledge cutoff, and they certainly do not know anything about your private documents, internal wikis, or company data.
+RAG bridges that gap by retrieving relevant information from your data and supplying it to the model as context, so responses are grounded in real, trusted sources rather than guesswork.
 
-RAG bridges this gap by retrieving relevant information from your data and feeding it to the LLM as "context" to answer a user's question grounded in truth.
+## The Challenge: The Quality of the Context Window
 
-## The Challenge: Quality Context Window
+In Retrieval-Augmented Generation (RAG), the real bottleneck is the LLM’s context window. You can’t simply pass your entire dataset into a prompt—there’s a strict token budget.
 
-The limiting factor in RAG is often the **context window** of the LLM. You can't just feed your entire database into a prompt. You have a finite budget of tokens.
-The challenge, therefore, is not just *finding* data, but finding the *most relevant* data. If you fill the context window with low-quality, keyword-matched search results, the LLM will produce low-quality answers. You need semantic understanding, precision, and the ability to rank diverse data types.
+Because of this, the problem isn’t just retrieving information, but retrieving the right information. When the context window is filled with loosely matched or low-quality results, the LLM has little to work with and the quality of its answers drops accordingly.
+
+High-quality RAG depends on semantic understanding, precise retrieval, and strong ranking across diverse data types so that every token in the context window earns its place.
 
 ![illustration_2](img/illustration_2.png)
 
