@@ -2,9 +2,7 @@
 
 *From Zero to RAG: A Step-by-Step Tutorial*
 
-**Retrieval-Augmented Generation (RAG)** allows an LLM to answer questions using your data at query time.
-
-On their own, LLMs are powerful but limited: they can hallucinate, they have a fixed knowledge cutoff, and they know nothing about your private documents, internal wikis, or proprietary systems.
+**Retrieval-Augmented Generation (RAG)** allows an LLM to answer questions using your data at query time. On their own, LLMs are powerful but limited: they can hallucinate, they have a fixed knowledge cutoff, and they know nothing about your private documents, internal wikis, or proprietary systems.
 
 RAG bridges that gap by retrieving relevant information from your data and supplying it to the model as context, so responses are grounded in real, trusted sources rather than guesswork.
 
@@ -341,7 +339,7 @@ Want better search results? You can fine-tune how Vespa ranks your documents usi
 ---
 
 
-### Managing Your Data
+### Manage Your Data
 
 NyRAG also gives you simple tools for cleanup. Open the advanced menu (three-dot icon ⋮ in the top right) and you will find two cleanup actions. **Clear Local Cache** removes cached files for all projects on your machine, which is useful when you want to re-process from scratch locally. **Clear Vespa Data** deletes the indexed documents in Vespa for the project, which is useful when you want a clean index before re-feeding. Both actions ask for confirmation so you do not delete data by accident.
 
