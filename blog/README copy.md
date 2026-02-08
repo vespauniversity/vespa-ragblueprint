@@ -209,11 +209,11 @@ Start with `base-features` for fast, solid results. Switch to `second-with-gbdt`
 
 ---
 
-## Add front end UI and feeding pipelines
+Now that your RAG Blueprint Vespa Cloud application is up and running, it’s time to add the missing pieces: a simple frontend UI and a data ingestion pipeline. For this, we’ll use **NyRAG**, a tool included in the [`vespa-ragblueprint`](https://github.com/vespauniversity/vespa-ragblueprint) repository.
 
-Now let's install the NyRAG tool from the vespa-ragblueprint repository that handles front end UI and feeding pipelines. NyRAG is the glue that reads documents (local files or websites), splits text into chunks, generates embeddings, feeds the results to Vespa, and then exposes a simple chat UI that answers questions using the retrieved chunks as context.
+NyRAG acts as the glue for the entire RAG workflow. It reads documents from local files or websites, splits text into manageable chunks, generates embeddings, feeds everything into Vespa, and finally exposes a lightweight chat UI where you can ask questions over your data. Instead of wiring all of this together yourself, NyRAG gives you a working end-to-end system out of the box.
 
-### Technical Setup
+### Installing NyRAG
 
 ```bash
 # Clone the repository
@@ -250,19 +250,15 @@ nyrag --help
 
 ---
 
-## Configure Your Project and Process Documents
-
-Now you'll configure your project using the web UI to connect to your Vespa Cloud deployment and set up document processing.
-
 **Get an LLM API key**
 
-NyRAG needs an OpenAI-compatible API key so it can generate the final answer after retrieval. If you just want the easiest starting point, OpenRouter works well because it provides access to many models behind a single API.
+To generate final answers, NyRAG needs an OpenAI-compatible API key. The simplest way to get started is **OpenRouter**, which provides access to multiple LLMs through a single API.
 
-In this blog, we will use OpenRouter. Feel free to change it to your flavors of LLM in your real application. To continue with the technical setup, please sign up on OpenRouter and obtain an api_key. 
+In this walkthrough, we’ll use OpenRouter for convenience. In a real application, you’re free to swap in any compatible LLM provider. To continue, sign up for OpenRouter and generate an API key. You’ll use it in the next step when configuring NyRAG.
 
 ---
 
-**Start the NyRAG UI:**
+### Start the NyRAG UI
 
 ```bash
 # This script handles all configuration automatically
@@ -279,6 +275,7 @@ The `run_nyrag.sh` script starts the UI and wires up the configuration so NyRAG 
 Open http://localhost:8000 in your browser.
 
 **Configure your project:**
+Now you'll configure your project using the web UI to connect to your Vespa Cloud deployment and set up document processing.
 
 **Step 1: Select and edit the example project**
 
@@ -291,7 +288,7 @@ In the top header, the project dropdown shows **"doc_example"**. If you are star
 
 **Step 2: Update your credentials**
 
-In the configuration editor, paste in the credentials you saved from Vespa Cloud and your LLM provider. You only need three things to get going: your Vespa tenant name, your Vespa endpoint + token, and your LLM API key.
+In the configuration editor, paste in the information you saved from Vespa Cloud and your LLM provider. You only need three things to get going: your Vespa tenant name, your Vespa endpoint + token, and your LLM API key.
 
 **Required fields to update:**
 
@@ -322,23 +319,21 @@ After updating the configuration, you can close the editor (changes are saved au
 
 ## Chat with Your Data
 
-Once processing is complete, use the NyRAG chat interface to ask questions!
+You can now start asking questions in the chat UI.
 
 ![nyrag_ui](img/nyrag_ui.png)
 
-When you ask a question, NyRAG expands it into a few focused search queries, Vespa runs hybrid retrieval (BM25 + vector similarity), and the best chunks are fused into a small context window. The LLM then generates the final answer using only that retrieved context.
+When you submit a query, NyRAG expands it into focused retrieval queries and sends them to Vespa. Vespa runs hybrid retrieval, combining BM25 keyword matching with vector similarity, and returns the most relevant chunks. Those chunks are packed into a compact context window and sent to the LLM, which generates an answer grounded entirely in your data.
 
-If you want a quick sanity check, ask something broad ("What are the main topics in these documents?") and then follow up with something specific ("Find information about <topic>") to confirm the retrieved chunks are relevant.
+A good way to sanity-check the setup is to start with a broad question like “What are the main topics in these documents?” and then follow up with something more specific to confirm the retrieved context makes sense.
 
-**That's it!** You now have a fully functional RAG application.
+At this point, you have a fully functional RAG application running on Vespa Cloud.
 
-### Adjusting Search Quality with Ranking Profiles
+### Improving Search Quality with Ranking Profiles
 
 Want better search results? You can fine-tune how Vespa ranks your documents using the Settings modal (⚙️ icon in the top right).
 
-
-
-**How to change ranking profiles:** Open the ⚙️ **Settings** panel, choose a **Ranking Profile** from the dropdown, and click **"Save"**. The very next query you run will use the new profile.
+**Change ranking profiles:** Open the ⚙️ **Settings** panel, choose a **Ranking Profile** from the dropdown, and click **"Save"**. The very next query you run will use the new profile.
 
 ![Settings modal with ranking profile dropdown](img/nyrag_settings_ranking_profiles.png)  
 **Description**: Settings modal showing ranking profile selection dropdown with 6 available options
@@ -350,15 +345,15 @@ Want better search results? You can fine-tune how Vespa ranks your documents usi
 
 ### Managing Your Data
 
-Need to reset or clean up your data? Open the advanced menu (three-dot icon ⋮ in the top right) and you will find two cleanup actions. **Clear Local Cache** removes cached files for all projects on your machine, which is useful when you want to re-process from scratch locally. **Clear Vespa Data** deletes the indexed documents in Vespa for the project, which is useful when you want a clean index before re-feeding. Both actions ask for confirmation so you do not delete data by accident.
+NyRAG also gives you simple tools for cleanup. Open the advanced menu (three-dot icon ⋮ in the top right) and you will find two cleanup actions. **Clear Local Cache** removes cached files for all projects on your machine, which is useful when you want to re-process from scratch locally. **Clear Vespa Data** deletes the indexed documents in Vespa for the project, which is useful when you want a clean index before re-feeding. Both actions ask for confirmation so you do not delete data by accident.
 
 ---
 
 ## Bonus: Try Web Crawling Mode
 
-Want to create a RAG application from website content instead of local documents? NyRAG supports web crawling!
+In addition to local documents, NyRAG supports web crawling. By switching to the web_example project, you can point NyRAG at a website and have it crawl, extract, and index content automatically.
 
-**How to switch to web crawling mode:**  Select `web_example (web)` from the dropdown at the top and open the configuration editor. If you are currently on the chat screen, open the three-dot menu (⋮) and choose **"Edit Config"** to bring the editor back. From there, update the same credential fields as you did for `doc_example`, then click **"Start Indexing"** to crawl and feed the site.
+**Switch to web crawling mode:**  Select `web_example (web)` from the dropdown at the top and open the configuration editor. If you are currently on the chat screen, open the three-dot menu (⋮) and choose **"Edit Config"** to bring the editor back. From there, update the same credential fields as you did for `doc_example`, then click **"Start Indexing"** to crawl and feed the site.
 
 ![Web crawling in progress](img/nyrag_indexing_web_2.png) 
 **Description**: Shows web crawling in progress with terminal logs displaying discovered URLs and processed pages
@@ -376,7 +371,7 @@ Want to create a RAG application from website content instead of local documents
 
 Running into issues? We've got you covered! For detailed troubleshooting guides covering Vespa connection errors, LLM configuration, document processing, and more, see the **[Troubleshooting section](https://github.com/vespauniversity/vespa-ragblueprint#troubleshooting)** in the main README.
 
-**Quick help:** If you get stuck, the fastest path is usually to ask in the [Vespa Slack](http://slack.vespa.ai/) community, where people can help you interpret logs and query behavior. If you think you found a bug or want to request an improvement, open an issue in [GitHub Issues](https://github.com/vespauniversity/vespa-ragblueprint/issues). And when you want deeper background on schema, ranking, and deployment, the [Vespa Docs](https://docs.vespa.ai/) are the canonical reference.
+**Quick help:** If you get stuck, the fastest path is usually to ask in the [Vespa Slack](http://slack.vespa.ai/) community, where people can help you interpret logs and query behavior. If you think you found a bug or want to request an improvement, open an issue in [GitHub Issues](https://github.com/vespauniversity/vespa-ragblueprint/issues). And when you want deeper background on schema, ranking, and deployment, the [Vespa Docs](https://docs.vespa.ai/) are your go-to reference.
 
 ---
 
