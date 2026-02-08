@@ -213,7 +213,7 @@ Now that your RAG Blueprint Vespa Cloud application is up and running, it’s ti
 
 NyRAG acts as the glue for the entire RAG workflow. It reads documents from local files or websites, splits text into manageable chunks, generates embeddings, feeds everything into Vespa, and finally exposes a lightweight chat UI where you can ask questions over your data. Instead of wiring all of this together yourself, NyRAG gives you a working end-to-end system out of the box.
 
-### Installing NyRAG
+### Install NyRAG
 
 ```bash
 # Clone the repository
@@ -247,8 +247,6 @@ uv pip install -e .
 nyrag --help
 ```
 
-
----
 
 **Get an LLM API key**
 
