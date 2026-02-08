@@ -379,14 +379,6 @@ Running into issues? We've got you covered! For detailed troubleshooting guides 
 
 **Congratulations!** You now have a working RAG app: a Vespa Cloud deployment that can retrieve high-quality context, and a small UI that lets you ingest data and chat with it.
 
-The main thing you built is a hybrid retrieval setup that combines vector similarity and BM25 text matching, and then ranks results so the LLM sees the best context you can provide. Once it is set up, keeping it current is simply a matter of re-running indexing when you add new documents.
-
-If you want to go deeper, start with the code in the repository and the Vespa tutorials. When you run into questions, the Vespa Slack community is a great place to ask.
-
-Next steps: If you want to keep exploring, start with the repository ([vespa-ragblueprint on GitHub](https://github.com/vespauniversity/vespa-ragblueprint)) and compare it with the original NyRAG project ([NyRAG GitHub](https://github.com/vespaai-playground/NyRAG)) to see what is customized for this blueprint. For a deeper conceptual walkthrough, the Vespa docs tutorial is a great follow-on: [RAG Blueprint Tutorial](https://docs.vespa.ai/en/tutorials/rag-blueprint.html). And if you want help or want to share what you built, join the [Vespa Slack](http://slack.vespa.ai/) community; it is the quickest way to get advice on retrieval, ranking, and deployment details.
-
-**Congratulations!** You now have a working RAG app: a Vespa Cloud deployment that can retrieve high-quality context, and a small UI that lets you ingest data and chat with it.
-
 Building a high-quality RAG system is never trivial. There are multiple moving parts to get right: the quality of the LLM, the size and management of its context window, and how effectively your retrieval system surfaces the most relevant information.
 
 Thanks to the out-of-the-box Vespa RAG blueprint on Vespa Cloud, much of this complexity is handled for you. It comes with multiple ranking profiles, and its default hybrid retrieval setup combines **vector similarity with BM25 text matching**, ensuring your LLM sees the best possible context for every query. 
