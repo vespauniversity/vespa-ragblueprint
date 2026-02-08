@@ -385,5 +385,17 @@ If you want to go deeper, start with the code in the repository and the Vespa tu
 
 Next steps: If you want to keep exploring, start with the repository ([vespa-ragblueprint on GitHub](https://github.com/vespauniversity/vespa-ragblueprint)) and compare it with the original NyRAG project ([NyRAG GitHub](https://github.com/vespaai-playground/NyRAG)) to see what is customized for this blueprint. For a deeper conceptual walkthrough, the Vespa docs tutorial is a great follow-on: [RAG Blueprint Tutorial](https://docs.vespa.ai/en/tutorials/rag-blueprint.html). And if you want help or want to share what you built, join the [Vespa Slack](http://slack.vespa.ai/) community; it is the quickest way to get advice on retrieval, ranking, and deployment details.
 
+**Congratulations!** You now have a working RAG app: a Vespa Cloud deployment that can retrieve high-quality context, and a small UI that lets you ingest data and chat with it.
+
+Building a high-quality RAG system is never trivial. There are multiple moving parts to get right: the quality of the LLM, the size and management of its context window, and how effectively your retrieval system surfaces the most relevant information.
+
+Thanks to the out-of-the-box Vespa RAG blueprint on Vespa Cloud, much of this complexity is handled for you. It comes with multiple ranking profiles, and its default hybrid retrieval setup combines **vector similarity with BM25 text matching**, ensuring your LLM sees the best possible context for every query. 
+
+Vespa Cloud doesn’t just make building RAG easier, it makes it **scalable, fast, and reliable**, giving you production-ready infrastructure, auto-scaling and observability without the headaches of self-hosting. Whether you’re experimenting with small datasets or scaling to millions of documents, Vespa Cloud provides the tools and flexibility to make your RAG project shine.
+
+Want to dive deeper? Start with the [RAG Blueprint Tutorial](https://docs.vespa.ai/en/learn/tutorials/rag-blueprint.html) for a thorough conceptual walkthrough. And remember the [Vespa Slack community](https://vespatalk.slack.com/) is always there to help. Ask questions, share what you’ve built, or get advice on retrieval, ranking, and deployment strategies.
+
+Ready to experience the power of Vespa Cloud for yourself? [Sign up](https://cloud.vespa.ai/) today and **start building high-quality RAG applications with ease**!
+
 
 
