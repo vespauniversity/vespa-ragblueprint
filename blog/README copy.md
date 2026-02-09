@@ -349,7 +349,7 @@ Want better search results? You can fine-tune how Vespa retrieves and ranks your
 
 **Change query profiles:** Open the ⚙️ **Settings** panel, choose a **Query Profile** from the dropdown, and click **"Save"**. The very next query you run will use the new profile.
 
-![Settings modal with query profile dropdown](img/nyrag_settings_query_profiles.png)
+![Settings modal with query profile dropdown](img/nyrag_settings_query_profiles.png)  
 **Description**: Settings modal showing query profile selection dropdown with 4 available options
 
 **What each profile does:**
