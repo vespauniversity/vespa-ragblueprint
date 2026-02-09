@@ -181,47 +181,29 @@ schema doc {
 At the same time, BM25 is enabled for lexical matching. This combination is what enables Vespa’s hybrid retrieval: semantic matching plus exact term relevance.
 
 
-**Out-of-the-Box Query Profiles:**
+**Out-of-the-Box Ranking Profiles:**
 
-The RAG Blueprint ships with four query profiles optimized for NyRAG's client-side RAG architecture:
+The RAG Blueprint ships with six ranking profiles, covering a range of speed-versus-quality trade-offs:
 
-**NyRAG Architecture:**
-```
-User Query → NyRAG (generates search queries)
-          → Vespa (retrieval + ranking)
-          → NyRAG (generates final answer)
-```
-Query profiles control **only the Vespa retrieval/ranking step**. NyRAG handles all LLM interactions.
+1. **base-features** (default, fast)
+   Blends BM25 text matching with vector similarity. This is the best place to start and a solid everyday choice when you want fast responses with good relevance.
 
-**The 4 Profiles:**
+2. **learned-linear** (lightweight learned model).
+   Adds a simple logistic regression model on top of the base features. It offers a quality boost without the cost of heavier second-phase ranking.
+   
+3. **second-with-gbdt** (highest quality)
+   Uses a LightGBM model in a second ranking phase. This profile typically delivers the best results on complex queries, at the cost of additional latency.
 
-1. **hybrid** (default, fast)
-   - **Retrieval:** BM25 + Vector search with `targetHits:100`
-   - **Ranking:** Learned linear model (logistic regression)
-   - **Best for:** Everyday queries where you want fast, solid results
+4. **match-only** (no ranking, fastest).
+   Primarily useful for debugging. It confirms that retrieval works without applying ranking logic.
+   
+5. **collect-training-data** and 6. **collect-second-phase** (training workflows)
+   Designed for advanced setups where you collect signals to train or tune custom ranking models.
 
-2. **hybrid-with-gbdt** (highest quality)
-   - **Retrieval:** Same as hybrid (BM25 + Vector, 100 targets)
-   - **Ranking:** Two-phase with LightGBM (GBDT) second-phase
-   - **Best for:** Complex queries where relevance matters most (~2-3x slower)
+> **For Advanced Users:** Want to understand the technical details behind these ranking profiles? Learn about phased ranking architecture, LightGBM model integration, tensor operations, and how Vespa scales ranking to billions of documents. See the comprehensive [Ranking Profiles technical guide](https://github.com/vespauniversity/vespa-ragblueprint#ranking-profiles) in the main README, including GitHub folder structure (`vespa_cloud/schemas/doc/*.profile`) and profile inheritance.
 
-3. **deepresearch** (exhaustive search)
-   - **Retrieval:** BM25 + Vector with `targetHits:10000` (100x more!)
-   - **Ranking:** Learned linear model
-   - **Best for:** Research scenarios needing maximum recall
-
-4. **deepresearch-with-gbdt** (exhaustive + best quality)
-   - **Retrieval:** Deep search (10k targets)
-   - **Ranking:** Two-phase with GBDT
-   - **Best for:** When you need both maximum recall and best ranking
-
-> **For Advanced Users:** Query profiles bundle complete search configurations including YQL structure (with `nearestNeighbor` operators), ranking profiles, and all required parameters (like learned coefficients). The Vespa application also includes `rag` and `rag-with-gbdt` profiles with `searchChain=openai` for **server-side RAG** (direct API usage), but these conflict with NyRAG's client-side architecture and aren't included. Learn more in the [technical guide](https://github.com/vespauniversity/vespa-ragblueprint#ranking-profiles).
-
-**Which profile should you use?**
-- Start with **`hybrid`** for everyday use - fast and accurate
-- Switch to **`hybrid-with-gbdt`** when quality matters most (harder queries)
-- Use **`deepresearch`** when you need to find everything relevant (research mode)
-- Try **`deepresearch-with-gbdt`** for maximum recall + quality (slowest but most thorough)
+**Which profile should you use?**  
+Start with `base-features` for fast, solid results. Switch to `second-with-gbdt` when relevance really matters. It can make a noticeable difference on harder questions. And when debugging retrieval, `match-only` is the quickest way to verify that documents are being matched at all.
 
 ---
 
@@ -343,22 +325,16 @@ A good way to sanity-check the setup is to start with a broad question like “W
 
 At this point, you have a fully functional RAG application running on Vespa Cloud.
 
-### Improving Search Quality with Query Profiles
+### Improving Search Quality with Ranking Profiles
 
-Want better search results? You can fine-tune how Vespa retrieves and ranks your documents using the Settings modal (⚙️ icon in the top right).
+Want better search results? You can fine-tune how Vespa ranks your documents using the Settings modal (⚙️ icon in the top right).
 
-**Change query profiles:** Open the ⚙️ **Settings** panel, choose a **Query Profile** from the dropdown, and click **"Save"**. The very next query you run will use the new profile.
+**Change ranking profiles:** Open the ⚙️ **Settings** panel, choose a **Ranking Profile** from the dropdown, and click **"Save"**. The very next query you run will use the new profile.
 
-![Settings modal with query profile dropdown](img/nyrag_settings_query_profiles.png)
-**Description**: Settings modal showing query profile selection dropdown with 4 available options
+![Settings modal with ranking profile dropdown](img/nyrag_settings_ranking_profiles.png)  
+**Description**: Settings modal showing ranking profile selection dropdown with 6 available options
 
-**What each profile does:**
-- **`hybrid`**: Fast hybrid search (BM25 + vector) with linear ranking
-- **`hybrid-with-gbdt`**: Same retrieval + advanced GBDT ranking (slower but best quality)
-- **`deepresearch`**: Exhaustive search with 10,000 retrieval targets (maximum recall)
-- **`deepresearch-with-gbdt`**: Exhaustive search + GBDT ranking (slowest, most thorough)
-
-**Pro tip**: The quality difference between `hybrid` and `hybrid-with-gbdt` can be dramatic for complex queries. The GBDT model offers significantly better relevance at the cost of 2-3x higher latency. For research tasks where you need to find everything relevant, try `deepresearch` variants which cast a much wider net!
+**Pro tip**: The quality difference between `base-features` and `second-with-gbdt` can be dramatic for complex queries. Try both and see which works best for your use case!
 
 ---
 

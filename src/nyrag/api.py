@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from openai import AsyncOpenAI
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sentence_transformers import SentenceTransformer
 
 from nyrag.config import Config, get_config_options, get_example_configs
@@ -29,8 +29,17 @@ from nyrag.vespa_cli import is_vespa_cloud_authenticated
 
 
 DEFAULT_ENDPOINT = "http://localhost:8080"
-DEFAULT_RANKING = "base-features"  # Must match rank-profile in schema
+DEFAULT_QUERY_PROFILE = "hybrid"  # Default query profile (bundles ranking + parameters)
 DEFAULT_SUMMARY = "no-chunks"  # Must match document-summary in schema
+
+# Allowed query profiles for NyRAG (client-side RAG)
+# Note: 'rag' and 'rag-with-gbdt' are excluded as they're for Vespa server-side RAG
+ALLOWED_QUERY_PROFILES = {
+    "hybrid",
+    "hybrid-with-gbdt",
+    "deepresearch",
+    "deepresearch-with-gbdt"
+}
 
 
 def _is_cloud_mode() -> bool:
@@ -125,8 +134,15 @@ class SearchRequest(BaseModel):
     query: str = Field(..., description="User query string")
     hits: int = Field(10, description="Number of Vespa hits to return")
     k: int = Field(3, description="Top-k chunks to keep per hit")
-    ranking: Optional[str] = Field(None, description="Ranking profile to use (defaults to schema default)")
+    query_profile: Optional[str] = Field(None, description="Query profile to use (defaults to hybrid)")
     summary: Optional[str] = Field(None, description="Document summary to request (defaults to no-chunks)")
+
+    @field_validator('query_profile')
+    @classmethod
+    def validate_query_profile(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in ALLOWED_QUERY_PROFILES:
+            raise ValueError(f"Invalid query profile '{v}'. Allowed profiles: {', '.join(sorted(ALLOWED_QUERY_PROFILES))}")
+        return v
 
 
 class CrawlRequest(BaseModel):
@@ -1040,14 +1056,14 @@ async def stop_crawl():
 
 @app.post("/search")
 async def search(req: SearchRequest) -> Dict[str, Any]:
-    """Query Vespa using YQL with a precomputed query embedding."""
+    """Query Vespa using query profiles (which define YQL internally)."""
     float_embedding = model.encode(req.query, convert_to_numpy=True).tolist()
     body = {
-        "yql": "select * from doc where {defaultIndex:\"default\"}userInput(@query)",
+        # Don't send YQL - let the query profile's YQL be used (includes vector search!)
         "query": req.query,
         "hits": req.hits,
         "summary": req.summary or DEFAULT_SUMMARY,
-        "ranking.profile": req.ranking or DEFAULT_RANKING,
+        "queryProfile": req.query_profile or DEFAULT_QUERY_PROFILE,
         "input.query(float_embedding)": float_embedding,  # Pass as float_embedding, not embedding
         "input.query(k)": req.k,
         "timeout": "20s",  # Increased timeout for slow Vespa Cloud queries
@@ -1076,20 +1092,26 @@ class ChatRequest(BaseModel):
         description="Number of alternate search queries to generate with the LLM",
     )
     model: Optional[str] = Field(None, description="OpenRouter model id (optional, uses env default if set)")
-    ranking_profile: str = Field("base-features", description="Vespa ranking profile to use")
+    query_profile: str = Field("hybrid", description="Vespa query profile to use")
+
+    @field_validator('query_profile')
+    @classmethod
+    def validate_query_profile(cls, v: str) -> str:
+        if v not in ALLOWED_QUERY_PROFILES:
+            raise ValueError(f"Invalid query profile '{v}'. Allowed profiles: {', '.join(sorted(ALLOWED_QUERY_PROFILES))}")
+        return v
 
 
-def _fetch_chunks(query: str, hits: int, k: int, ranking_profile: str = "base-features") -> List[Dict[str, Any]]:
+def _fetch_chunks(query: str, hits: int, k: int, query_profile: str = "hybrid") -> List[Dict[str, Any]]:
     # Generate float embedding for the query
     float_embedding = model.encode(query, convert_to_numpy=True).tolist()
 
     body = {
-        "yql": "select * from doc where {defaultIndex:\"default\"}userInput(@query)",
+        # Don't send YQL - let the query profile's YQL be used (includes vector search!)
         "query": query,
         "hits": hits,
-        "ranking": ranking_profile,
+        "queryProfile": query_profile,  # Query profile provides YQL with hybrid search
         "summary": DEFAULT_SUMMARY,
-        "ranking.profile": ranking_profile,  # Use user-selected ranking profile
         "input.query(float_embedding)": float_embedding,  # Pass as float_embedding, not embedding
         "input.query(k)": k,
         "timeout": "20s",  # Increased timeout for slow Vespa Cloud queries
@@ -1150,9 +1172,9 @@ def _fetch_chunks(query: str, hits: int, k: int, ranking_profile: str = "base-fe
     return chunks
 
 
-async def _fetch_chunks_async(query: str, hits: int, k: int, ranking_profile: str = "base-features") -> List[Dict[str, Any]]:
+async def _fetch_chunks_async(query: str, hits: int, k: int, query_profile: str = "hybrid") -> List[Dict[str, Any]]:
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, partial(_fetch_chunks, query, hits, k, ranking_profile))
+    return await loop.run_in_executor(None, partial(_fetch_chunks, query, hits, k, query_profile))
 
 
 def _get_llm_client() -> AsyncOpenAI:
@@ -1301,7 +1323,7 @@ async def _generate_search_queries_stream(
     num_queries: int,
     hits: int,
     k: int,
-    ranking_profile: str = "base-features",
+    query_profile: str = "hybrid",
     history: Optional[List[Dict[str, str]]] = None,
 ) -> AsyncGenerator[Tuple[str, Any], None]:
     """Use the chat LLM to propose focused search queries grounded in retrieved chunks."""
@@ -1309,7 +1331,7 @@ async def _generate_search_queries_stream(
         yield "result", []
         return
 
-    grounding_chunks = (await _fetch_chunks_async(user_message, hits=hits, k=k, ranking_profile=ranking_profile))[:5]
+    grounding_chunks = (await _fetch_chunks_async(user_message, hits=hits, k=k, query_profile=query_profile))[:5]
     grounding_text = "\n".join(f"- [{c.get('loc','')}] {c.get('chunk','')}" for c in grounding_chunks)
 
     system_prompt = (
@@ -1371,8 +1393,22 @@ async def _generate_search_queries_stream(
         raise HTTPException(status_code=500, detail=str(exc))
 
     queries: List[str] = []
+
+    # Strip markdown code blocks if present
+    content_to_parse = full_content.strip()
+    if content_to_parse.startswith("```"):
+        # Remove markdown code block markers
+        lines = content_to_parse.splitlines()
+        # Remove first line if it's ```json or ```
+        if lines and lines[0].strip().startswith("```"):
+            lines = lines[1:]
+        # Remove last line if it's ```
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        content_to_parse = "\n".join(lines).strip()
+
     try:
-        parsed = json.loads(full_content)
+        parsed = json.loads(content_to_parse)
         candidates = parsed.get("queries") if isinstance(parsed, dict) else parsed
         if isinstance(candidates, list):
             queries = [str(q).strip() for q in candidates if str(q).strip()]
@@ -1381,9 +1417,10 @@ async def _generate_search_queries_stream(
 
     # Fallback: try to parse line-separated text if JSON parsing fails
     if not queries:
-        for line in full_content.splitlines():
-            candidate = line.strip(" -•\t")
-            if candidate:
+        for line in content_to_parse.splitlines():
+            candidate = line.strip(" -•\t`")  # Also strip backticks
+            # Skip markdown artifacts and JSON structure
+            if candidate and not candidate.startswith("{") and not candidate.startswith("[") and candidate not in ["}", "]"]:
                 queries.append(candidate)
 
     cleaned: List[str] = []
@@ -1405,13 +1442,13 @@ async def _prepare_queries_stream(
     query_k: int,
     hits: int,
     k: int,
-    ranking_profile: str = "base-features",
+    query_profile: str = "hybrid",
     history: Optional[List[Dict[str, str]]] = None,
 ) -> AsyncGenerator[Tuple[str, Any], None]:
     """Build the list of queries (original + enhanced) for retrieval."""
     enhanced = []
     async for event_type, payload in _generate_search_queries_stream(
-        user_message, model_id, query_k, hits=hits, k=k, ranking_profile=ranking_profile, history=history
+        user_message, model_id, query_k, hits=hits, k=k, query_profile=query_profile, history=history
     ):
         if event_type == "thinking":
             yield "thinking", payload
@@ -1441,12 +1478,12 @@ async def _prepare_queries(user_message: str, model_id: str, query_k: int, hits:
     return queries
 
 
-async def _fuse_chunks(queries: List[str], hits: int, k: int, ranking_profile: str = "base-features") -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+async def _fuse_chunks(queries: List[str], hits: int, k: int, query_profile: str = "hybrid") -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     """Search Vespa for each query and return fused, deduped chunks."""
     all_chunks: List[Dict[str, Any]] = []
     logger.info(f"Fetching chunks for {len(queries)} queries")
 
-    tasks = [_fetch_chunks_async(q, hits=hits, k=k, ranking_profile=ranking_profile) for q in queries]
+    tasks = [_fetch_chunks_async(q, hits=hits, k=k, query_profile=query_profile) for q in queries]
     results = await asyncio.gather(*tasks)
     for res in results:
         all_chunks.extend(res)
@@ -1556,19 +1593,31 @@ async def _chat_stream(req: ChatRequest):
     model_id = _resolve_model_id(req.model)
     queries = []
 
-    async for event_type, payload in _prepare_queries_stream(
-        req.message, model_id, req.query_k, req.hits, req.k, req.ranking_profile, history=req.history
-    ):
-        if event_type == "thinking":
-            yield sse("thinking", payload)
-        elif event_type == "result":
-            queries = payload
-            yield sse("queries", queries)
+    try:
+        async for event_type, payload in _prepare_queries_stream(
+            req.message, model_id, req.query_k, req.hits, req.k, req.query_profile, history=req.history
+        ):
+            if event_type == "thinking":
+                yield sse("thinking", payload)
+            elif event_type == "result":
+                queries = payload
+                yield sse("queries", queries)
+    except Exception as e:
+        logger.error(f"Error generating queries: {e}", exc_info=True)
+        yield sse("error", f"Failed to generate search queries: {str(e)}")
+        yield sse("done", None)
+        return
 
     # 2. Retrieve and Fuse
     yield sse("status", "Retrieving context from Vespa...")
-    used_queries, chunks = await _fuse_chunks(queries, req.hits, req.k, req.ranking_profile)
-    yield sse("sources", chunks)
+    try:
+        used_queries, chunks = await _fuse_chunks(queries, req.hits, req.k, req.query_profile)
+        yield sse("sources", chunks)
+    except Exception as e:
+        logger.error(f"Error retrieving from Vespa: {e}", exc_info=True)
+        yield sse("error", f"Failed to retrieve context from Vespa: {str(e)}")
+        yield sse("done", None)
+        return
 
     if not chunks:
         yield sse("answer", "No relevant context found.")
@@ -1629,4 +1678,6 @@ async def _chat_stream(req: ChatRequest):
         yield sse("done", None)
 
     except Exception as e:
-        yield sse("error", str(e))
+        logger.error(f"Error generating answer: {e}", exc_info=True)
+        yield sse("error", f"Failed to generate answer: {str(e)}")
+        yield sse("done", None)

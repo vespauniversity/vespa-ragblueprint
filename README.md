@@ -118,18 +118,39 @@ nyrag ui --cloud
 
 ## How to Get Free LLM API Keys
 
-### Option 1: OpenRouter
+### Option 1: OpenRouter (Recommended - Free Tier Available)
 - Sign up at [openrouter.ai](https://openrouter.ai/)
 - 100+ models available
 - Use model: `meta-llama/llama-3.2-3b-instruct:free`
+- Config:
+  ```yaml
+  llm_config:
+    base_url: https://openrouter.ai/api/v1
+    model: meta-llama/llama-3.2-3b-instruct:free
+    api_key: sk-or-v1-YOUR_KEY_HERE
+  ```
 
 ### Option 2: OpenAI
 - Sign up at [platform.openai.com](https://platform.openai.com/)
 - Use model: `gpt-4o-mini`
+- Config:
+  ```yaml
+  llm_config:
+    base_url: https://api.openai.com/v1
+    model: gpt-4o-mini
+    api_key: sk-proj-YOUR_KEY_HERE
+  ```
 
-### Option 3: Groq
+### Option 3: Groq (Fast & Free Tier)
 - Sign up at [console.groq.com](https://console.groq.com/)
 - Use model: `llama-3.3-70b-versatile`
+- Config:
+  ```yaml
+  llm_config:
+    base_url: https://api.groq.com/openai/v1
+    model: llama-3.3-70b-versatile
+    api_key: gsk_YOUR_KEY_HERE
+  ```
 
 ### Option 4: Ollama (100% Free - Local)
 - Download from [ollama.com](https://ollama.com/)
@@ -320,62 +341,115 @@ vespa query 'yql=select * from doc where userQuery()' 'query=what is vespa?'
 # Hybrid search (text + vector)
 vespa query 'yql=select * from doc where userQuery() or ({targetHits:100}nearestNeighbor(chunk_embeddings,embedding))' 'query=machine learning'
 
-# Query with a specific ranking profile
-vespa query 'query=RAG architecture' 'ranking=second-with-gbdt'
+# Query with a specific query profile
+vespa query 'query=RAG architecture' 'queryProfile=hybrid-with-gbdt'
 
-# Compare results with different profiles
-vespa query 'query=RAG architecture' 'ranking=base-features'
-vespa query 'query=RAG architecture' 'ranking=second-with-gbdt'
+# Compare results with different query profiles
+vespa query 'query=RAG architecture' 'queryProfile=hybrid'
+vespa query 'query=RAG architecture' 'queryProfile=hybrid-with-gbdt'
 
 # Verbose mode (see full HTTP request/response)
 vespa query -v 'query=search query'
 ```
 
-**Why use Vespa CLI?** The CLI is optional, but it is handy when you want a direct view of what Vespa returns without the UI and LLM layer in between. It makes it easy to experiment with ranking profiles and query parameters, to debug why a query is (or is not) retrieving the right documents, and to integrate searches into scripts and automation. It is also lower-latency than full chat because it skips answer generation.
+**Why use Vespa CLI?** The CLI is optional, but it is handy when you want a direct view of what Vespa returns without the UI and LLM layer in between. It makes it easy to experiment with query profiles and query parameters, to debug why a query is (or is not) retrieving the right documents, and to integrate searches into scripts and automation. It is also lower-latency than full chat because it skips answer generation.
 
 **Note:** The NyRAG UI handles all of this for you, plus adds LLM-powered answer generation. The CLI is useful for debugging, testing, and advanced use cases.
 
-## Ranking Profiles
+## Query Profiles
 
-The RAG Blueprint includes 6 pre-configured ranking profiles that control how Vespa ranks search results. You can select different profiles from the Settings modal (⚙️ icon) in the NyRAG UI.
+The RAG Blueprint includes pre-configured **query profiles** that bundle together ranking strategies with their required parameters. You can select different profiles from the Settings modal (⚙️ icon) in the NyRAG UI.
 
-**Available Profiles:**
+**NyRAG Architecture:**
 
-| Profile | Speed | Quality | Use Case |
-|---------|-------|---------|----------|
-| **base-features** | ⚡⚡⚡ Fast | Good | Default for everyday queries |
-| **learned-linear** | ⚡⚡ Medium | Better | Linear model with learned coefficients |
-| **second-with-gbdt** | ⚡ Slower | Best | LightGBM gradient boosting for production |
-| **match-only** | ⚡⚡⚡ Fastest | None | Testing/debugging retrieval only |
-| **collect-training-data** | ⚡⚡ Medium | N/A | Collecting features for training |
-| **collect-second-phase** | ⚡ Slower | N/A | Collecting second-phase features |
+NyRAG implements **client-side RAG**, where the Python backend orchestrates the workflow:
+
+```
+User Query → NyRAG (generates search queries with LLM)
+          → Vespa (hybrid retrieval + ranking via query profile)
+          → NyRAG (generates final answer with LLM from retrieved chunks)
+          → User
+```
+
+Query profiles control **only the retrieval and ranking** in Vespa. NyRAG handles all LLM interactions.
+
+**Available Query Profiles (for NyRAG):**
+
+| Query Profile | Speed | Quality | Retrieval Strategy | Use Case |
+|---------|-------|---------|-------------------|----------|
+| **hybrid** | ⚡⚡⚡ Fast | Good | BM25 + Vector (targetHits:100) | Default for everyday queries |
+| **hybrid-with-gbdt** | ⚡ Slower | Best | BM25 + Vector + GBDT 2nd phase | Best quality for complex queries |
+| **deepresearch** | ⚡⚡ Medium | Good | BM25 + Vector (targetHits:10000) | Exhaustive search for research |
+| **deepresearch-with-gbdt** | ⚡ Slower | Best | Deep search + GBDT ranking | Maximum recall + quality |
+
+> **Note:** The application also includes `rag` and `rag-with-gbdt` profiles for **Vespa server-side RAG** (direct API/CLI usage). These profiles include `searchChain=openai` which makes Vespa handle LLM generation internally. They are **not compatible with NyRAG** since both would try to generate answers. For NyRAG, use the profiles above which focus on retrieval/ranking only.
 
 **How They Work:**
 
-- **base-features**: Simple linear combination of BM25 text scores and vector similarity
-  - Single-phase ranking using basic features
-  - Fast computation on all matched documents
-  - Uses `bm25(title)`, `bm25(chunks)`, and embedding closeness scores
+Each query profile bundles multiple settings:
+- **YQL query structure** (with nearestNeighbor operators and targetHits)
+- **Ranking profile** (learned-linear or second-with-gbdt)
+- **Query parameters** (learned model coefficients, embeddings, timeouts)
 
-- **learned-linear**: Logistic regression model trained on relevance judgments (see `eval/` folder)
-  - First-phase ranking with learned coefficients
-  - Combines multiple features: `bm25()`, `max_chunk_sim_scores`, `avg_top_3_chunk_sim_scores`, etc.
-  - Trained on labeled data using `eval/train_logistic_regression.py`
+**hybrid**:
+- YQL: Hybrid search with `targetHits:100` for both title and chunk embeddings
+- Ranking: `learned-linear` (logistic regression with learned coefficients)
+- Features: `bm25(title)`, `bm25(chunks)`, `max_chunk_sim_scores`, `avg_top_3_chunk_sim_scores`
+- Parameters: All coefficients set automatically (intercept: -7.798639, weights: 13.38, 0.20, etc.)
+- Trained on labeled data using `eval/train_logistic_regression.py`
 
-- **second-with-gbdt**: Two-phase ranking - linear first-phase + LightGBM second-phase for top results
-  - **First-phase**: Learned linear model evaluates all matched documents (fast)
-  - **Second-phase**: LightGBM gradient boosting reranks top candidates only (expensive but accurate)
-  - Uses ML model from `vespa_cloud/models/lightgbm_model.json`
-  - Includes expensive features: `nativeProximity`, `nativeRank`, `nativeFieldMatch`, `elementSimilarity`
-  - Controlled by `rerank-count` (how many docs to rerank in second phase)
+**hybrid-with-gbdt**:
+- YQL: Same hybrid search as `hybrid`
+- Ranking: `second-with-gbdt` (two-phase ranking)
+  - **First-phase**: Learned linear model on all matched documents (fast)
+  - **Second-phase**: LightGBM gradient boosting on top candidates (expensive but accurate)
+- Model: `vespa_cloud/models/lightgbm_model.json`
+- Features: Includes expensive features (`nativeProximity`, `nativeRank`, `nativeFieldMatch`, `elementSimilarity`)
+- Controlled by `rerank-count` parameter
 
-- **match-only**: Returns documents in match order without ranking computation
-  - Skips all ranking for maximum performance
-  - Useful for debugging retrieval or when results are pre-sorted
+**deepresearch** / **deepresearch-with-gbdt**:
+- YQL: Exhaustive search with `targetHits:10000` (vs 100 for hybrid)
+- Ranking: Same as hybrid variants (`learned-linear` or `second-with-gbdt`)
+- Timeout: 5 seconds (vs 20 seconds default)
+- Use when: Maximum recall matters more than latency
 
-**Why These Profiles Are Advanced:**
+**For Direct Vespa API Usage (Not NyRAG):**
 
-Vespa's ranking profiles leverage sophisticated features that enable production-scale relevance:
+- **rag** / **rag-with-gbdt**: Server-side RAG with Vespa's built-in LLM integration
+  - Sets `searchChain=openai` to enable Vespa-side streaming answer generation
+  - Requires LLM API key configured in Vespa Cloud Secret Store (`vespa secret add llm-api-key`)
+  - **Architecture:** Query → Vespa (retrieval + ranking + LLM generation) → User
+  - **Not compatible with NyRAG:** NyRAG does client-side generation, so using these profiles would cause conflicts or errors
+  - **Use case:** Direct Vespa CLI/API queries when you want server-side RAG without NyRAG
+
+**Why Not Use `rag` Profiles in NyRAG?**
+
+The `rag` profiles are functionally identical to `hybrid` profiles for retrieval/ranking, but add `searchChain=openai` which tells Vespa to generate answers. This conflicts with NyRAG's architecture:
+
+| Aspect | `hybrid` Profile | `rag` Profile |
+|--------|-----------------|---------------|
+| Retrieval | BM25 + Vector | BM25 + Vector (same) |
+| Ranking | Learned Linear | Learned Linear (same) |
+| LLM Generation | NyRAG handles it | Vespa tries to handle it ❌ |
+| Requires Vespa Secret Store | No | Yes |
+| Works with NyRAG | ✅ | ❌ (conflict/error) |
+
+**Bottom line:** For NyRAG, use `hybrid`/`hybrid-with-gbdt`/`deepresearch` profiles. They do the same retrieval/ranking without the conflicting server-side generation.
+
+**Why Query Profiles Are Essential:**
+
+Query profiles are Vespa's way of bundling **complete search configurations** - not just ranking, but the entire query structure. Without them, you'd need to manually specify:
+- YQL with nearestNeighbor operators and targetHits
+- Ranking profile name
+- All required parameters (coefficients, embeddings, timeouts)
+
+**Important:** NyRAG sends queries using `queryProfile` parameter and lets the profile control the YQL. This ensures:
+- ✅ True hybrid search (BM25 + vector) happens
+- ✅ Correct targetHits values are used (100 for hybrid, 10000 for deepresearch)
+- ✅ All ranking parameters are set correctly
+- ✅ No parameter conflicts or overrides
+
+Under the hood, query profiles leverage sophisticated Vespa features:
 
 1. **Phased Ranking Architecture**:
    - **First-phase**: Runs on all matched documents with cheap features (BM25, basic similarity)
@@ -393,43 +467,49 @@ Vespa's ranking profiles leverage sophisticated features that enable production-
    - Uses binary quantized embeddings with Hamming distance for efficiency
 
 4. **Profile Inheritance**:
-   - Profiles inherit from each other to reduce duplication
-   - Example: `second-with-gbdt` inherits `base-features` and adds second-phase
-   - Reusable functions like `max_chunk_sim_scores()` across profiles
+   - Ranking profiles inherit from each other to reduce duplication
+   - Example: `second-with-gbdt` inherits `base-features` (function library) and adds ranking expressions
+   - Reusable functions like `max_chunk_sim_scores()` defined once, used everywhere
 
 **GitHub Locations:**
 
-Ranking profiles are defined in the application package:
+Query profiles and ranking profiles are defined in the application package:
 
 ```
 vespa_cloud/
+├── search/
+│   └── query-profiles/                   # User-facing query profiles (select these!)
+│       ├── hybrid.xml                    # Default: learned linear ranking
+│       ├── hybrid-with-gbdt.xml          # GBDT ranking
+│       ├── rag.xml                       # Hybrid + LLM generation
+│       ├── rag-with-gbdt.xml             # GBDT + LLM generation
+│       ├── deepresearch.xml              # Deep search (10k targets)
+│       └── deepresearch-with-gbdt.xml    # Deep search + GBDT
 ├── schemas/
 │   └── doc/
 │       ├── doc.sd                        # Main schema with base features
-│       ├── base-features.profile         # Base ranking profile (default)
+│       ├── base-features.profile         # Function library (not standalone)
 │       ├── learned-linear.profile        # First-phase learned model
 │       ├── second-with-gbdt.profile      # Two-phase with LightGBM
-│       ├── match-only.profile            # No ranking (fastest)
+│       ├── match-only.profile            # No ranking (debugging)
 │       ├── collect-training-data.profile # Training data collection
 │       └── collect-second-phase.profile  # Second-phase training data
-├── models/
-│   └── lightgbm_model.json              # LightGBM model for second-phase
-└── search/
-    └── query-profiles/                   # Default query settings per profile
+└── models/
+    └── lightgbm_model.json              # LightGBM model for second-phase
 ```
 
-**Profile Inheritance Structure:**
-- `base-features` (foundation) → inherited by most profiles
-- `learned-linear` inherits `base-features` + adds learned coefficients
-- `second-with-gbdt` inherits `base-features` + adds LightGBM second-phase
+**Ranking Profile Inheritance Structure:**
+- `base-features` (function library) → provides reusable functions, not standalone usable
+- `learned-linear` inherits `base-features` + adds first-phase expression with learned coefficients
+- `second-with-gbdt` inherits `base-features` + adds first-phase + LightGBM second-phase
 - `collect-*` profiles inherit base features + expose training data features
 
-**Changing Profiles:**
+**Changing Query Profiles:**
 
 **Via NyRAG UI (Recommended):**
 1. Open NyRAG UI at http://localhost:8000
 2. Click Settings (⚙️) in top right
-3. Select desired ranking profile from dropdown
+3. Select desired query profile from dropdown
 4. Click "Save"
 5. Future queries use the new profile
 
@@ -444,21 +524,21 @@ app = Vespa(
     vespa_cloud_secret_token="your-token"
 )
 
-# Query with specific ranking profile
+# Query with specific query profile
 response = app.query(
     yql="select * from doc where userQuery()",
     query="What is RAG?",
-    ranking="second-with-gbdt",  # Specify ranking profile
+    queryProfile="hybrid-with-gbdt",  # Specify query profile
     hits=5
 )
 
-# Compare different ranking profiles
-profiles = ["base-features", "learned-linear", "second-with-gbdt"]
+# Compare different query profiles
+profiles = ["hybrid", "hybrid-with-gbdt", "deepresearch-with-gbdt"]
 for profile in profiles:
     response = app.query(
         yql="select * from doc where userQuery()",
         query="machine learning",
-        ranking=profile,
+        queryProfile=profile,
         hits=3
     )
     print(f"\n{profile}: {len(response.hits)} hits")
@@ -469,27 +549,28 @@ for profile in profiles:
 **Via Vespa CLI:**
 
 ```bash
-# Query with specific ranking profile
-vespa query 'query=machine learning' 'ranking=second-with-gbdt'
+# Query with specific query profile
+vespa query 'query=machine learning' 'queryProfile=hybrid-with-gbdt'
 
-# Compare results across profiles
-vespa query 'query=RAG architecture' 'ranking=base-features'
-vespa query 'query=RAG architecture' 'ranking=learned-linear'
-vespa query 'query=RAG architecture' 'ranking=second-with-gbdt'
+# Compare results across query profiles
+vespa query 'query=RAG architecture' 'queryProfile=hybrid'
+vespa query 'query=RAG architecture' 'queryProfile=hybrid-with-gbdt'
+vespa query 'query=RAG architecture' 'queryProfile=deepresearch-with-gbdt'
 
 # Use with other query parameters
 vespa query \
   'query=hybrid search' \
-  'ranking=second-with-gbdt' \
+  'queryProfile=hybrid-with-gbdt' \
   'hits=10'
 ```
 
 **Parameters:**
-- `ranking` or `ranking.profile`: Name of the ranking profile to use
-- Both parameters work identically - use whichever you prefer
-- Profile must exist in `vespa_cloud/schemas/doc/*.profile` files
+- `queryProfile`: Name of the query profile to use (recommended)
+- Query profiles bundle ranking strategy with required parameters
+- Profiles defined in `vespa_cloud/search/query-profiles/*.xml` files
+- Available profiles: `hybrid`, `hybrid-with-gbdt`, `rag`, `rag-with-gbdt`, `deepresearch`, `deepresearch-with-gbdt`
 
-**Pro Tip:** The `second-with-gbdt` profile can significantly improve result quality for complex queries, but adds latency (~2-3x slower). Use `base-features` for speed, `second-with-gbdt` for quality. Benchmark both on your data to find the right balance.
+**Pro Tip:** The `hybrid-with-gbdt` query profile can significantly improve result quality for complex queries, but adds latency (~2-3x slower). Use `hybrid` for speed, `hybrid-with-gbdt` for quality. Benchmark both on your data to find the right balance.
 
 ## Advanced: The Schema
 
@@ -550,11 +631,13 @@ schema doc {
 - **Binary Quantization**: 10x storage reduction with minimal quality loss
 - **Multi-Query RAG**: Generates multiple search queries for better recall
 
-### Configurable Ranking Profiles
-- **6 ranking profiles**: Choose from fast (`base-features`) to best quality (`second-with-gbdt`)
+### Configurable Query Profiles
+- **4 NyRAG-optimized profiles**: Choose from fast (`hybrid`) to best quality (`hybrid-with-gbdt`, `deepresearch-with-gbdt`)
 - **Learned models**: Linear regression and LightGBM gradient boosting for advanced ranking
-- **Easy switching**: Select ranking profile from settings modal - no redeployment needed
+- **Easy switching**: Select query profile from settings modal - no redeployment needed
 - **Quality vs speed**: Trade off latency for result quality based on your needs
+- **Bundled parameters**: Query profiles automatically set ranking strategy + required coefficients
+- **Client-side RAG**: NyRAG handles LLM generation, profiles control retrieval/ranking only
 
 ### Data Management
 - **Clear Local Cache**: Remove all cached data files (`output/*/data.jsonl`) from all projects

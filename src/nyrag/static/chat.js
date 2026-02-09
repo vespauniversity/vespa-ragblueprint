@@ -1142,11 +1142,19 @@ function deepMerge(target, source) {
 
 // ... Chat Message Logic
 let chatHistory = [];
+let messageIdCounter = 0; // Counter for unique message IDs
 
 async function sendMessage() {
   console.log("sendMessage called");
   const text = inputEl.value.trim();
   if (!text) return;
+
+  // Verify chat element exists
+  if (!chatEl) {
+    console.error("Chat element not found! Cannot send message.");
+    alert("Error: Chat interface not initialized. Please refresh the page.");
+    return;
+  }
 
   addMessage("user", text);
   inputEl.value = "";
@@ -1155,17 +1163,44 @@ async function sendMessage() {
   const hits = parseInt(document.getElementById("hits").value) || 5;
   const k = parseInt(document.getElementById("k").value) || 3;
   const query_k = parseInt(document.getElementById("query_k").value) || 3;
-  const ranking_profile = document.getElementById("ranking-profile").value || "base-features";
+  const query_profile = document.getElementById("query-profile").value || "hybrid";
 
   // Create assistant bubble with structure
   const assistantId = addMessage("assistant", "");
-  const bubble = document.getElementById(assistantId).querySelector(".bubble");
+
+  if (!assistantId) {
+    console.error("Failed to create message - addMessage returned null");
+    alert("Error: Could not create message bubble. Please refresh the page.");
+    return;
+  }
+
+  const messageEl = document.getElementById(assistantId);
+
+  if (!messageEl) {
+    console.error("Failed to find message element with id:", assistantId);
+    return;
+  }
+
+  const bubble = messageEl.querySelector(".bubble");
+  if (!bubble) {
+    console.error("Bubble element not found");
+    return;
+  }
 
   // Add typing indicator
   const textEl = bubble.querySelector(".assistant-text");
+  if (!textEl) {
+    console.error("assistant-text element not found");
+    return;
+  }
+
   textEl.innerHTML = '<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';
 
   const metaEl = bubble.querySelector(".assistant-meta");
+  if (!metaEl) {
+    console.error("assistant-meta element not found");
+    return;
+  }
 
   // State for streaming
   let fullResponse = "";
@@ -1188,9 +1223,15 @@ async function sendMessage() {
         hits: hits,
         k: k,
         query_k: query_k,
-        ranking_profile: ranking_profile
+        query_profile: query_profile
       })
     });
+
+    // Check if response is OK before trying to read stream
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Server error (${res.status}): ${errorText}`);
+    }
 
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
@@ -1316,7 +1357,13 @@ async function sendMessage() {
               }
             } else if (event === "error") {
               if (statusEl) statusEl.remove();
-              textEl.textContent += "\nError: " + data;
+              // Show error prominently
+              const errorDiv = document.createElement("div");
+              errorDiv.className = "error-message";
+              errorDiv.style.cssText = "color: #ef4444; background: #fee; padding: 12px; border-radius: 6px; margin: 8px 0; border-left: 4px solid #ef4444;";
+              errorDiv.innerHTML = `<strong>❌ Error:</strong> ${data}`;
+              bubble.appendChild(errorDiv);
+              textEl.textContent = ""; // Clear any partial response
             }
 
             chatEl.scrollTop = chatEl.scrollHeight;
@@ -1332,7 +1379,14 @@ async function sendMessage() {
     chatHistory.push({ role: "assistant", content: fullResponse });
 
   } catch (e) {
-    textEl.textContent = "Error: " + e.message;
+    console.error("Chat error:", e);
+    // Show error prominently in the UI
+    const errorDiv = document.createElement("div");
+    errorDiv.className = "error-message";
+    errorDiv.style.cssText = "color: #ef4444; background: #fee; padding: 12px; border-radius: 6px; margin: 8px 0; border-left: 4px solid #ef4444;";
+    errorDiv.innerHTML = `<strong>❌ Connection Error:</strong> ${e.message}<br><small>Check console for details or try again.</small>`;
+    bubble.appendChild(errorDiv);
+    textEl.textContent = ""; // Clear any partial response
   }
 }
 
@@ -1345,11 +1399,18 @@ inputEl.onkeydown = (e) => {
 };
 
 function addMessage(role, text) {
+  // Verify chat element exists
+  if (!chatEl) {
+    console.error("chatEl is null in addMessage!");
+    return null;
+  }
+
   // Remove welcome message if it exists
   const welcome = document.querySelector('.welcome-message');
   if (welcome) welcome.remove();
 
-  const id = "msg-" + Date.now();
+  // Use counter + timestamp for guaranteed unique ID
+  const id = "msg-" + Date.now() + "-" + (++messageIdCounter);
   const div = document.createElement("div");
   div.className = `msg ${role}-msg`;
   div.id = id;
@@ -1612,8 +1673,8 @@ async function loadUserSettings() {
     if (settings.query_k !== undefined) {
       document.getElementById("query_k").value = settings.query_k;
     }
-    if (settings.ranking_profile !== undefined) {
-      document.getElementById("ranking-profile").value = settings.ranking_profile;
+    if (settings.query_profile !== undefined) {
+      document.getElementById("query-profile").value = settings.query_profile;
     }
     // Note: We intentionally do NOT auto-select the project here anymore.
     // if (settings.active_project) { await selectProject(settings.active_project); }
@@ -1630,7 +1691,7 @@ async function saveUserSettings() {
       hits: parseInt(document.getElementById("hits").value) || 5,
       k: parseInt(document.getElementById("k").value) || 3,
       query_k: parseInt(document.getElementById("query_k").value) || 3,
-      ranking_profile: document.getElementById("ranking-profile").value || "base-features",
+      query_profile: document.getElementById("query-profile").value || "hybrid",
     };
 
     const res = await fetch("/user-settings", {
