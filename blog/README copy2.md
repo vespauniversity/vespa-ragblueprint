@@ -94,10 +94,10 @@ Continue through the remaining setup screens, then open the application view.
 In the application view you will also find the endpoint URL. It typically looks like `https://[app-id].vespa-cloud.com`. Save both the **endpoint URL** and the token; you will need them to configure Python backend in the next section.
 
 
-You can download the Vespa application package by clicking that download icon, but in this tutorial we will not download it.
+
 
 ![image_15](img/image_15.png)
-
+You can download the Vespa application package by clicking the download icon if you’d like. From there, you can start building your data feeding pipeline, frontend service UI, and more. However, this blog provides a sample end-to-end RAG application, and the same Vespa application package is included, so there’s no need to download it separately.
 
 ## Behind the Scenes: What You Just Deployed
 
